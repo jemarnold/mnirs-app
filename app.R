@@ -9,6 +9,7 @@ suppressPackageStartupMessages({
     library(signal)
     library(mnirs)
     library(thematic)
+    library(plotly)
 })
 
 # devtools::install_github("jemarnold/mnirs", force = TRUE)
@@ -28,16 +29,10 @@ split_named_vec <- function(x) {
 
     noquotes <- gsub('["\'`]', '', x)
     channels_vec <- trimws(strsplit(noquotes, ",")[[1L]])
-
     parts <- strsplit(channels_vec, "\\s*=\\s*")
-
     names <- vapply(parts, `[`, character(1L), 1L)
     vals <- vapply(parts, \(.x) {
-        if (length(.x) > 1L) {
-            paste(.x[-1L], collapse = "=")
-        } else {
-            .x[1L]
-        }
+        if (length(.x) > 1L) paste(.x[-1L], collapse = "=") else .x[1L]
     }, character(1L))
 
     return(setNames(vals, names))
@@ -77,7 +72,8 @@ apply_if <- function(data, condition, fn, ...) {
 
 ## Group channels for ensemble/distinct operations
 group_channels <- function(channels, mode) {
-    switch(mode,
+    switch(
+        mode,
         "Ensemble" = list(channels),
         "Distinct" = as.list(channels)
     )
@@ -109,9 +105,165 @@ try_filter <- function(data, nirs_channels, time_channel, ...) {
     )
 }
 
+## Build interactive plotly plot reproducing theme_mnirs() elements
+plot_mnirs_plotly <- function(
+    data,
+    time_labels = FALSE,
+    ink = "#373a3c",
+    paper = "#fff",
+    manual_events = NULL,
+    base_size = 20,
+    raw_data = NULL
+) {
+    tc <- attr(data, "time_channel")
+    chans <- attr(data, "nirs_channels")
+    cols <- mnirs::palette_mnirs(length(chans))
+    x_vals <- data[[tc]]
+
+    ## fractional h:mm:ss for hover (axis ticks use integer format_hmmss)
+    format_hmmss_frac <- function(x) {
+        x <- as.numeric(x)
+        sign <- ifelse(x < 0, "-", "")
+        hrs <- as.integer(abs(x) %/% 3600)
+        mins <- as.integer((abs(x) %% 3600) %/% 60)
+        secs <- abs(x) %% 60
+        out <- ifelse(
+            hrs > 0,
+            sprintf("%s%d:%02d:%06.3f", sign, hrs, mins, secs),
+            sprintf("%s%02d:%06.3f", sign, mins, secs)
+        )
+        out[is.na(x)] <- NA_character_
+        return(out)
+    }
+
+    hover_x <- if (time_labels) format_hmmss_frac(x_vals) else x_vals
+
+    p <- plotly::plot_ly()
+
+    ## optional raw (unfiltered) traces drawn first at low alpha
+    if (!is.null(raw_data)) {
+        for (i in seq_along(chans)) {
+            ch <- chans[[i]]
+            p <- plotly::add_trace(
+                p,
+                x = x_vals,
+                y = raw_data[[ch]],
+                type = "scatter",
+                mode = "lines",
+                name = paste0(ch, " (raw)"),
+                showlegend = FALSE,
+                hoverinfo = "skip",
+                line = list(color = cols[[i]], width = 1),
+                opacity = 0.6
+            )
+        }
+    }
+
+    ## one line trace per NIRS channel
+    for (i in seq_along(chans)) {
+        ch <- chans[[i]]
+        p <- plotly::add_trace(
+            p,
+            x = x_vals,
+            y = data[[ch]],
+            type = "scatter",
+            mode = "lines",
+            name = ch,
+            showlegend = TRUE,
+            line = list(color = cols[[i]], width = 1.5),
+            text = hover_x,
+            hovertemplate = paste0(
+                "<b>",
+                ch,
+                "</b><br>",
+                tc,
+                ": %{text}<br>",
+                "value: %{y:.2f}<extra></extra>"
+            )
+        )
+    }
+
+    ## dashed vertical lines for manual events
+    shapes <- if (length(manual_events)) {
+        lapply(manual_events, \(xv) {
+            list(
+                type = "line",
+                x0 = xv,
+                x1 = xv,
+                xref = "x",
+                y0 = 0,
+                y1 = 1,
+                yref = "paper",
+                line = list(color = ink, dash = "dash", width = 1)
+            )
+        })
+    } else {
+        list()
+    }
+
+    ## x-axis with optional h:mm:ss tick text
+    xaxis <- list(
+        title = if (time_labels) paste(tc, "(h:mm:ss)") else tc,
+        showgrid = FALSE,
+        zeroline = FALSE,
+        showline = TRUE,
+        linecolor = ink,
+        color = ink
+    )
+    if (time_labels) {
+        tv <- mnirs::breaks_timespan(n = 5)(x_vals)
+        xaxis$tickvals <- tv
+        xaxis$ticktext <- mnirs::format_hmmss(tv)
+    }
+
+    plotly::layout(
+        p,
+        paper_bgcolor = paper,
+        plot_bgcolor = paper,
+        font = list(size = base_size * 0.7, color = ink),
+        xaxis = xaxis,
+        yaxis = list(
+            title = "mNIRS",
+            showgrid = FALSE,
+            zeroline = FALSE,
+            showline = TRUE,
+            linecolor = ink,
+            color = ink
+        ),
+        shapes = shapes,
+        showlegend = TRUE,
+        legend = list(
+            orientation = "h",
+            x = 1,
+            xanchor = "right",
+            y = 0.95,
+            yanchor = "bottom"
+        ),
+        hovermode = "closest",
+        margin = list(t = 40, r = 20, b = 50, l = 60)
+    ) |>
+        plotly::config(
+            displaylogo = FALSE,
+            modeBarButtonsToRemove = c(
+                "lasso2d",
+                "select2d",
+                "autoScale2d",
+                "hoverCompareCartesian",
+                "toggleSpikelines"
+            )
+        )
+}
+
 ## UI ===========================================================
 ui <- page_navbar(
-    title = "{mnirs} Data Processing",
+    title = tagList(
+        img(
+            src = "mnirs-hex.svg",
+            height = "50px",
+            style = "margin-right: 8px; vertical-align: middle;"
+        ),
+        "{mnirs} Data Processing"
+    ),
     theme = bs_theme(
         bootswatch = "cosmo",
         "navbar-bg" = "#2780e3",
@@ -159,19 +311,17 @@ ui <- page_navbar(
                 textInput(
                     "nirs_channels",
                     label = "mNIRS Channel Names\n(accepts multiple)",
-                    placeholder = "new_name = file_column_name",
                     updateOn = "blur"
                 ),
                 textInput(
                     "time_channel",
                     label = "Time/Sample Channel Name",
-                    placeholder = "new_name = file_column_name",
                     updateOn = "blur"
                 ),
                 textInput(
                     "event_channel",
                     label = "Lap/Event Channel Name\n(optional)",
-                    placeholder = "new_name = file_column_name",
+                    # placeholder = "new_name = file_column_name",
                     updateOn = "blur"
                 ),
 
@@ -229,6 +379,10 @@ ui <- page_navbar(
                         "Moving-Average"
                     )
                 ),
+                conditionalPanel(
+                    condition = "input.filter_method != 'None'",
+                    checkboxInput("show_raw", "Show Raw Tracings", FALSE)
+                ),
                 uiOutput("filter_method_ui"),
 
                 ## shift data (dataframe)
@@ -274,7 +428,7 @@ ui <- page_navbar(
             card(
                 fill = FALSE,
                 card_header("Signals Display"),
-                plotOutput("plot", height = "600px"),
+                plotly::plotlyOutput("plot", height = "600px"),
 
                 card_header("Data Table"),
                 DTOutput("nirs_table", fill = FALSE)
@@ -668,18 +822,28 @@ server <- function(input, output, session) {
         req(trimmed_data())
 
         resample_rate <- blank_to_null(input$resample_rate)
+        time_channel <- metadata()$time_channel
 
-        trimmed_data() |>
+        out <- trimmed_data() |>
             apply_if(
                 !is.null(resample_rate),
                 mnirs::resample_mnirs,
                 resample_rate = resample_rate,
                 method = "linear" ## need the interpolation
             )
+
+        ## zero time after resample
+        if (input$zero_time_logical) {
+            time_vec <- out[[time_channel]]
+            out[[time_channel]] <- time_vec - time_vec[1L]
+        }
+
+        return(out)
     }) |>
         bindCache(
             trimmed_data(),
-            input$resample_rate
+            input$resample_rate,
+            input$zero_time_logical
         )
 
     ## reactive replaced data ======================================
@@ -689,7 +853,7 @@ server <- function(input, output, session) {
         invalid_values <- string_to_numeric(input$invalid_values)
         if (input$replace_outliers) {
             outlier_cutoff <- 3
-            outlier_span <- 7 ## TODO custom outlier span?
+            outlier_span <- 15 ## TODO custom outlier span?
         } else {
             outlier_cutoff <- NULL
             outlier_span <- NULL
@@ -810,7 +974,7 @@ server <- function(input, output, session) {
             input$rescale_which_cols
         )
 
-    ## reactive nirs_data ====================================================
+    ## reactive events data ==============================================
     nirs_data <- reactive({
         req(rescaled_data())
 
@@ -819,12 +983,6 @@ server <- function(input, output, session) {
         manual_events <- string_to_numeric(input$manual_events)
         nirs_data <- rescaled_data()
         time_vec <- nirs_data[[time_channel]]
-
-        ## re-calc zero time after processing stages
-        if (input$zero_time_logical) {
-            nirs_data[[time_channel]] <- time_vec - time_vec[1L]
-            time_vec <- nirs_data[[time_channel]]
-        }
 
         ## add manual event markers using nearest-match
         if (!is.null(manual_events)) {
@@ -858,8 +1016,12 @@ server <- function(input, output, session) {
         display_data <- nirs_data()
         display_data[] <- lapply(names(display_data), \(.name) {
             col <- display_data[[.name]]
-            if (is.numeric(col)) {
-                mnirs:::signif_trailing(col, digits = 3L, format = "signif")
+            if (.name == time_channel) {
+                mnirs:::signif_trailing(col, 3L)
+            } else if (rlang::is_integerish(col)) {
+                as.integer(col)
+            } else if (is.numeric(col)) {
+                mnirs:::signif_trailing(col, 4L, "signif")
             } else {
                 col
             }
@@ -878,7 +1040,7 @@ server <- function(input, output, session) {
     })
 
     ## Output: Plot ==========================================
-    output$plot <- renderPlot({
+    output$plot <- plotly::renderPlotly({
         req(nirs_data())
 
         mode <- input$color_mode
@@ -892,24 +1054,25 @@ server <- function(input, output, session) {
 
         manual_events <- string_to_numeric(input$manual_events)
 
-        plot <- mnirs:::plot.mnirs(
+        show_raw <- isTRUE(input$show_raw) && input$filter_method != "None"
+        raw_data <- if (show_raw) replaced_data() else NULL
+
+        plot_mnirs_plotly(
             nirs_data(),
-            time_labels = input$time_labels
-        ) +
-            theme_mnirs(base_size = 20, ink = ink, paper = paper)
-
-        if (!is.null(manual_events)) {
-            plot <- plot +
-                ggplot2::geom_vline(
-                    xintercept = manual_events,
-                    linetype = "dashed",
-                    colour = ink
-                )
-        }
-
-        plot
+            time_labels = input$time_labels,
+            ink = ink,
+            paper = paper,
+            manual_events = manual_events,
+            raw_data = raw_data
+        )
     }) |>
-        bindEvent(nirs_data(), input$manual_events, input$time_labels, input$color_mode)
+        bindEvent(
+            nirs_data(),
+            input$manual_events,
+            input$time_labels,
+            input$color_mode,
+            input$show_raw
+        )
 
     ## Download handler =============================================
     output$download_data <- downloadHandler(
