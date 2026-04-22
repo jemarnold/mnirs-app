@@ -12,7 +12,7 @@ suppressPackageStartupMessages({
     library(plotly)
 })
 
-# devtools::install_github("jemarnold/mnirs", force = TRUE)
+# pak::pak("jemarnold/mnirs@dev")
 
 thematic::thematic_shiny(font = "auto")
 
@@ -578,117 +578,111 @@ ui <- page_navbar(
 
 ## server ===========================================
 server <- function(input, output, session) {
-    nirs_channels <- reactive(input$nirs_channels)
-    time_channel <- reactive(input$time_channel)
-    event_channel <- reactive(input$event_channel)
+    ## payload written only by do_read(). raw_data() wrapper surfaces
+    ## stored errors via validate() so render contexts (plot, table)
+    ## display them in place of old data.
+    raw_data_val <- reactiveVal(NULL)
+    raw_data_err <- reactiveVal(NULL)
 
-    ## reactive raw data ====================================
     raw_data <- reactive({
-        req(input$upload_file, nchar(nirs_channels()) > 0L)
-
-        upload_file <- input$upload_file$datapath
-
-        raw_data <- tryCatch(
-            read_mnirs(
-                file_path = upload_file,
-                nirs_channels = split_named_vec(nirs_channels()),
-                time_channel = split_named_vec(time_channel()),
-                event_channel = split_named_vec(event_channel()),
-                sample_rate = blank_to_null(input$sample_rate),
-                add_timestamp = FALSE,
-                keep_all = input$keep_all
-            ),
-            error = \(e) {
-                ## remove CLI formatting from error message
-                validate(need(FALSE, clean_cli_message(e)))
-            }
-        )
-
-        return(raw_data)
-    })
-
-    ## auto-update: channels & sample_rate ==============================
-    detect_and_fill_channels <- function() {
-        detected <- tryCatch(
-            read_mnirs(
-                file_path = input$upload_file$datapath,
-                nirs_channels = NULL,
-                time_channel = NULL,
-                add_timestamp = FALSE,
-                keep_all = TRUE
-            ),
-            error = \(e) NULL
-        )
-
-        if (!is.null(detected)) {
-            nirs_channels <- attr(detected, "nirs_channels")
-            time_channel <- if (
-                attr(detected, "nirs_device") == "Artinis"
-            ) {
-                "sample = 1"
-            } else {
-                attr(detected, "time_channel")
-            }
-
-            updateTextInput(
-                session,
-                "nirs_channels",
-                value = paste(nirs_channels, collapse = ", ")
-            )
-            updateTextInput(
-                session,
-                "time_channel",
-                value = time_channel
-            )
+        if (!is.null(raw_data_err())) {
+            validate(need(FALSE, raw_data_err()))
         }
-    }
-
-    observeEvent(input$upload_file, {
-            ## reset to blank on new uploaded file
-            updateNumericInput(
-                session,
-                inputId = "sample_rate",
-                value = NA
-            )
-
-            ## auto-detect nirs channels for recognised devices
-            if (!nchar(input$nirs_channels)) {
-                detect_and_fill_channels()
-            }
-        },
-        ignoreNULL = FALSE
-    )
-
-    ## re-detect channels if user clears nirs_channels field
-    observeEvent(input$nirs_channels, {
-        req(input$upload_file, !nchar(input$nirs_channels))
-        detect_and_fill_channels()
+        req(raw_data_val())
     })
 
-    observeEvent(raw_data(), {
-        req(raw_data())
-
-        ## update with new value
-        updateNumericInput(
-            session,
-            inputId = "sample_rate",
-            value = metadata()$sample_rate
-        )
-    })
+    ## suppresses the edit-observer during programmatic input sync
+    ## after upload.
+    suppress_edit <- reactiveVal(FALSE)
 
     ## reactive metadata ===================================
     metadata <- reactive({
         req(raw_data())
 
-        raw_data <- raw_data()
-        
         return(list(
-            nirs_channels = attr(raw_data, "nirs_channels"),
-            time_channel = attr(raw_data, "time_channel"),
-            event_channel = attr(raw_data, "event_channel"),
-            sample_rate = attr(raw_data, "sample_rate")
+            nirs_channels = attr(raw_data(), "nirs_channels"),
+            time_channel = attr(raw_data(), "time_channel"),
+            event_channel = attr(raw_data(), "event_channel"),
+            sample_rate = attr(raw_data(), "sample_rate")
         ))
     })
+
+    ## run read_mnirs with current inputs; caller controls triggers.
+    do_read <- function() {
+        isolate({
+            req(input$upload_file)
+
+            out <- tryCatch(
+                read_mnirs(
+                    file_path = input$upload_file$datapath,
+                    nirs_channels = split_named_vec(input$nirs_channels),
+                    time_channel = split_named_vec(input$time_channel),
+                    event_channel = split_named_vec(input$event_channel),
+                    sample_rate = blank_to_null(input$sample_rate),
+                    add_timestamp = FALSE,
+                    keep_all = input$keep_all
+                ),
+                error = \(e) {
+                    raw_data_val(NULL)
+                    raw_data_err(clean_cli_message(e))
+                    return(NULL)
+                }
+            )
+            print("do_read run")
+            req(out)
+            raw_data_err(NULL)
+            raw_data_val(out)
+        })
+    }
+
+    ## on upload: read, then sync blank inputs to detected metadata.
+    ## suppress_edit armed so edit-observer ignores programmatic updates.
+    observeEvent(input$upload_file, {
+        do_read()
+        md <- isolate(metadata())
+        suppress_edit(TRUE)
+
+        if (!nchar(isolate(input$nirs_channels) %||% "")) {
+            updateTextInput(
+                session, "nirs_channels",
+                value = paste(md$nirs_channels, collapse = ", ")
+            )
+        }
+        if (!nchar(isolate(input$time_channel) %||% "")) {
+            updateTextInput(
+                session, "time_channel",
+                value = md$time_channel %||% ""
+            )
+        }
+        if (is.na(isolate(input$sample_rate) %||% NA)) {
+            updateNumericInput(
+                session, "sample_rate",
+                value = md$sample_rate
+            )
+        }
+    })
+
+    ## on user edits to channel/rate inputs: re-run read_mnirs.
+    ## bindEvent fires on genuine input changes AND on programmatic
+    ## updates, so we gate with suppress_edit to skip the latter.
+    observeEvent(
+        list(
+            input$nirs_channels,
+            input$time_channel,
+            input$event_channel,
+            input$sample_rate,
+            input$keep_all
+        ),
+        {
+            req(input$upload_file)
+            if (isolate(suppress_edit())) {
+                suppress_edit(FALSE)
+                return()
+            }
+            do_read()
+        },
+        ignoreInit = TRUE
+    )
 
     ## dynamic UI: filter_mnirs ======================================
     output$filter_method_ui <- renderUI({
