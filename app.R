@@ -105,8 +105,30 @@ try_filter <- function(data, nirs_channels, time_channel, ...) {
     )
 }
 
+## fractional h:mm:ss for hover (axis ticks use integer format_hmmss)
+format_hmmss_frac <- function(x) {
+    x <- as.numeric(x)
+    sign <- ifelse(x < 0, "-", "")
+    hrs <- as.integer(abs(x) %/% 3600)
+    mins <- as.integer((abs(x) %% 3600) %/% 60)
+    secs <- abs(x) %% 60
+    decimals <- min(3, max(nchar(sub("^[^.]*\\.?", "", format(secs)))))
+    width <- if (decimals == 0) 2 else decimals + 3
+    secs_str <- formatC(
+        secs, width = width, digits = decimals, format = "f", flag = "0"
+    )
+
+    out <- ifelse(
+        hrs > 0,
+        sprintf("%s%d:%02d:%s", sign, hrs, mins, secs_str),
+        sprintf("%s%02d:%s", sign, mins, secs_str)
+    )
+    out[is.na(x)] <- NA_character_
+    return(out)
+}
+
 ## Build interactive plotly plot reproducing theme_mnirs() elements
-plot_mnirs_plotly <- function(
+plotly_mnirs <- function(
     data,
     time_labels = FALSE,
     ink = "#373a3c",
@@ -115,81 +137,76 @@ plot_mnirs_plotly <- function(
     base_size = 20,
     raw_data = NULL
 ) {
-    tc <- attr(data, "time_channel")
-    chans <- attr(data, "nirs_channels")
-    cols <- mnirs::palette_mnirs(length(chans))
-    x_vals <- data[[tc]]
+    time_ch <- attr(data, "time_channel")
+    nirs_ch <- attr(data, "nirs_channels")
+    colours <- mnirs::palette_mnirs(length(nirs_ch))
 
-    ## fractional h:mm:ss for hover (axis ticks use integer format_hmmss)
-    format_hmmss_frac <- function(x) {
-        x <- as.numeric(x)
-        sign <- ifelse(x < 0, "-", "")
-        hrs <- as.integer(abs(x) %/% 3600)
-        mins <- as.integer((abs(x) %% 3600) %/% 60)
-        secs <- abs(x) %% 60
-        out <- ifelse(
-            hrs > 0,
-            sprintf("%s%d:%02d:%06.3f", sign, hrs, mins, secs),
-            sprintf("%s%02d:%06.3f", sign, mins, secs)
-        )
-        out[is.na(x)] <- NA_character_
-        return(out)
+    ## When labelling axis as h:mm:ss, render x as POSIXct so plotly
+    ## auto-recomputes ticks on zoom
+    time_vec <- if (time_labels) {
+        .POSIXct(as.numeric(data[[time_ch]]), tz = "UTC")
+    } else {
+        data[[time_ch]]
+    }
+    
+    manual_events <- if (time_labels && length(manual_events)) {
+        lapply(manual_events, \(.e) .POSIXct(as.numeric(.e), tz = "UTC"))
+    } else {
+        manual_events
     }
 
-    hover_x <- if (time_labels) format_hmmss_frac(x_vals) else x_vals
+    time_label <- if (time_labels) {
+        format_hmmss_frac(time_vec)
+    } else {
+        mnirs:::signif_trailing(time_vec, 3L)
+    }
 
-    p <- plotly::plot_ly()
+    plot <- plotly::plot_ly()
 
     ## optional raw (unfiltered) traces drawn first at low alpha
     if (!is.null(raw_data)) {
-        for (i in seq_along(chans)) {
-            ch <- chans[[i]]
-            p <- plotly::add_trace(
+        plot <- Reduce(\(p, i) {
+            plotly::add_trace(
                 p,
-                x = x_vals,
-                y = raw_data[[ch]],
+                x = time_vec,
+                y = raw_data[[nirs_ch[[i]]]],
                 type = "scatter",
                 mode = "lines",
-                name = paste0(ch, " (raw)"),
+                name = paste0(nirs_ch[[i]], " (raw)"),
                 showlegend = FALSE,
                 hoverinfo = "skip",
-                line = list(color = cols[[i]], width = 1),
+                line = list(color = colours[[i]], width = 1),
                 opacity = 0.6
             )
-        }
+        }, seq_along(nirs_ch), init = plot)
     }
 
     ## one line trace per NIRS channel
-    for (i in seq_along(chans)) {
-        ch <- chans[[i]]
-        p <- plotly::add_trace(
+    plot <- Reduce(\(p, i) {
+        plotly::add_trace(
             p,
-            x = x_vals,
-            y = data[[ch]],
+            x = time_vec,
+            y = data[[nirs_ch[[i]]]],
             type = "scatter",
             mode = "lines",
-            name = ch,
+            name = nirs_ch[[i]],
             showlegend = TRUE,
-            line = list(color = cols[[i]], width = 1.5),
-            text = hover_x,
+            line = list(color = colours[[i]], width = 1.5),
+            text = time_label,
             hovertemplate = paste0(
-                "<b>",
-                ch,
-                "</b><br>",
-                tc,
-                ": %{text}<br>",
-                "value: %{y:.2f}<extra></extra>"
+                time_ch, ": %{text}<br>",
+                "<b>", nirs_ch[[i]], ":</b> %{y:.2f}<extra></extra>"
             )
         )
-    }
+    }, seq_along(nirs_ch), init = plot)
 
     ## dashed vertical lines for manual events
     shapes <- if (length(manual_events)) {
-        lapply(manual_events, \(xv) {
+        lapply(manual_events, \(.event) {
             list(
                 type = "line",
-                x0 = xv,
-                x1 = xv,
+                x0 = .event,
+                x1 = .event,
                 xref = "x",
                 y0 = 0,
                 y1 = 1,
@@ -203,7 +220,7 @@ plot_mnirs_plotly <- function(
 
     ## x-axis with optional h:mm:ss tick text
     xaxis <- list(
-        title = if (time_labels) paste(tc, "(h:mm:ss)") else tc,
+        title = if (time_labels) paste(time_ch, "(h:mm:ss)") else time_ch,
         showgrid = FALSE,
         zeroline = FALSE,
         showline = TRUE,
@@ -211,13 +228,12 @@ plot_mnirs_plotly <- function(
         color = ink
     )
     if (time_labels) {
-        tv <- mnirs::breaks_timespan(n = 5)(x_vals)
-        xaxis$tickvals <- tv
-        xaxis$ticktext <- mnirs::format_hmmss(tv)
+        xaxis$type <- "date"
+        xaxis$tickformat <- "%-H:%M:%S"
     }
 
     plotly::layout(
-        p,
+        plot,
         paper_bgcolor = paper,
         plot_bgcolor = paper,
         font = list(size = base_size * 0.7, color = ink),
@@ -1091,7 +1107,7 @@ server <- function(input, output, session) {
         show_raw <- isTRUE(input$show_raw) && input$filter_method != "None"
         raw_data <- if (show_raw) replaced_data() else NULL
 
-        plot_mnirs_plotly(
+        plotly_mnirs(
             nirs_data(),
             time_labels = input$time_labels,
             ink = ink,
