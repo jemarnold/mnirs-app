@@ -11,13 +11,14 @@ id = '019cfe8e-b6e7-4d4a-8a59-c598324375ea'
 dashboard_url = 'https://connect.posit.cloud/jemarnold/content/019cfe8e-b6e7-4d4a-8a59-c598324375ea'
 direct_url = 'https://019cfe8e-b6e7-4d4a-8a59-c598324375ea.share.connect.posit.cloud'
 logs_url = 'https://connect.posit.cloud/jemarnold/content/019cfe8e-b6e7-4d4a-8a59-c598324375ea/history'
-deployed_at = '2026-04-22T21:18:46-07:00'
-bundle_id = '019db88f-cc8e-eda0-1ddd-4afe2e52181f'
+deployed_at = '2026-04-23T06:48:02-07:00'
+bundle_id = '019dba98-f3d3-3213-90e1-5fff6cda89a1'
 files = [
   '.posit/publish/deployments/deployment-GKNT.toml',
   '.posit/publish/mnirs-app-7VLP.toml',
   'app.R',
-  'renv.lock'
+  'renv.lock',
+  'www/mnirs-hex.svg'
 ]
 
 [connect_cloud]
@@ -31,6 +32,7 @@ entrypoint = 'app.R'
 validate = true
 files = [
   '/app.R',
+  '/www/mnirs-hex.svg',
   '/.posit/publish/mnirs-app-7VLP.toml',
   '/.posit/publish/deployments/deployment-GKNT.toml'
 ]

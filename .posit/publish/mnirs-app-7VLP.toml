@@ -8,6 +8,7 @@ entrypoint = 'app.R'
 validate = true
 files = [
   '/app.R',
+  '/www/mnirs-hex.svg',
   '/.posit/publish/mnirs-app-7VLP.toml',
   '/.posit/publish/deployments/deployment-GKNT.toml'
 ]
