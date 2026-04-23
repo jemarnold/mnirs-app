@@ -321,21 +321,32 @@ ui <- page_navbar(
                 textInput(
                     "event_channel",
                     label = "Lap/Event Channel Name\n(optional)",
-                    # placeholder = "new_name = file_column_name",
                     updateOn = "blur"
+                ),
+
+                ## reset start time to zero
+                checkboxInput("zero_time_logical", "Zero Start Time"),
+
+                ## display x as h:mm:ss
+                checkboxInput(
+                    "time_labels",
+                    'Display Time as "h:mm:ss"',
+                    value = TRUE
                 ),
 
                 numericInput(
                     "sample_rate",
                     label = "Sample Rate\n(estimated automatically)",
                     value = NA,
-                    min = 0
+                    min = 0,
+                    updateOn = "blur"
                 ),
                 numericInput(
                     "resample_rate",
-                    label = "Re-sample Rate",
+                    label = "Resample Rate",
                     value = NA,
-                    min = 0
+                    min = 0,
+                    updateOn = "blur"
                 ),
 
                 ## remove head/tail timespan
@@ -344,14 +355,16 @@ ui <- page_navbar(
                     label = "Trim Head Timespan",
                     value = NA,
                     min = 0,
-                    step = 1
+                    step = 1,
+                    updateOn = "blur"
                 ),
                 numericInput(
                     "tail_trim",
                     label = "Trim Tail Timespan",
                     value = NA,
                     min = 0,
-                    step = 1
+                    step = 1,
+                    updateOn = "blur"
                 ),
 
                 ## replace invalid values (column wise)
@@ -392,16 +405,6 @@ ui <- page_navbar(
                 ## rescale (dataframe)
                 checkboxInput("rescale_logical", "Rescale Data"),
                 uiOutput("rescale_ui"),
-
-                ## reset start time to zero
-                checkboxInput("zero_time_logical", "Zero Start Time"),
-
-                ## display x as h:mm:ss
-                checkboxInput(
-                    "time_labels",
-                    'Display Time as "h:mm:ss"',
-                    value = TRUE
-                ),
 
                 ## place manual event lines in data
                 textInput(
@@ -448,12 +451,15 @@ ui <- page_navbar(
                 fill = FALSE,
                 card_header("Citation"),
                 markdown(
-                    'This is a basic implementation of functionality provided in the
-        open-source R package ***{mnirs}***.
+                    '
+        This is a basic implementation of functionality provided in the
+        open-source R package *{mnirs}*.
 
-        Available from: https://github.com/jemarnold/mnirs <br>
-        Author: Jem Arnold
-        `<currently under development>`'
+        Available from: https://github.com/jemarnold/mnirs
+    
+        For more information see the *{mnirs}* package documentation: https://jemarnold.github.io/mnirs/index.html
+        
+        Author: Jem Arnold'
                 )
             ),
 
@@ -463,8 +469,9 @@ ui <- page_navbar(
                 markdown(
                     '
         mNIRS files can be imported and processed using standardised methods,
-        and displayed in a plot and data table. Processed data can be
-        downloaded for further analysis.
+        and displayed in a plot and data table. The plot is interactive and can 
+        be zoomed in and out (changing settings will reset plot zoom).
+        Processed data can be downloaded for further analysis.
 
         #### Upload File:
         Upload an `.xls(x)` or `.csv` file containing mNIRS data exported from
@@ -477,25 +484,27 @@ ui <- page_navbar(
         can be specified using comma-separated `new_name = file_column_name`
         pairs.
 
-        Example: `nirs_channels = c(smo2_left = SmO2, smo2_right = SmO2(2))`
+        Example: `smo2_left = SmO2, smo2_right = SmO2(2)`
 
         #### Time/Sample Channel Name:
-        Specify the column containing time or sample values. This channel will
-        be estimated from the file, if not specified.
+        Specify the column containing time or sample values.
 
-        Example: `time_channel = c(time = Timestamp (seconds))`
+        Example: `time = Timestamp (seconds)`
 
         #### Lap/Event Channel Name (optional):
         Optionally specify column with lap/event markers.
+
+        #### Zero Start Time:
+        Reset `time_channel` to start at zero.
 
         #### Sample Rate:
         Specify the exported data sample rate in Hz. This will be automatically
         estimated from the time channel and can be manually overridden.
 
-        #### Re-sample Rate:
-        Data can be re-sampled to a desired higher or lower sample rate. Also
-        used to correct `time_channel` values for data with irregular or
-        duplicated samples.
+        #### Resample Rate:
+        Data can be resampled to a higher or lower sample rate. Also used to
+        correct `time_channel` values for data with irregular or duplicated
+        samples.
 
         #### Trim Head/Tail Timespan:
         Remove samples from the beginning or end of the recording, specified in
@@ -505,10 +514,10 @@ ui <- page_navbar(
         Replace specific fixed values (e.g., `c(0, 100)`) from `nirs_channels`.
 
         #### Replace Outliers:
-        Remove local outliers using a Hampel filter moving window approach.
+        Remove local outliers using a moving window Hampel filter approach.
 
         #### Replace Missing Values:
-        Linearly interpolate across missing `nirs_channel` values.
+        Linearly interpolate across missing values in `nirs_channel`.
 
         #### Digital Filter Method:
         Apply smoothing filters to improve signal-to-noise ratio. Methods
@@ -519,20 +528,18 @@ ui <- page_navbar(
         #### Shift Data:
         Move `nirs_channels` values up or down to a new specified reference
         value, based on the *"first"*, *"minimum"*, or *"maximum"* data points.
-        Channels can be shifted together (*"Ensemble"*) or independently
-        (*"Distinct"*).
+        Multiple channels can be shifted together (*"Ensemble"*) or 
+        independently (*"Distinct"*).
 
         #### Rescale Data:
-        Normalise `nirs_channels` to a new specified range. Channels can be
-        shifted together (*"Ensemble"*) or independently (*"Distinct"*).
-
-        #### Zero Start Time:
-        Reset `time_channel` to start at zero.
+        Normalise `nirs_channels` to a new specified dynamic range. Multiple
+        channels can be shifted together (*"Ensemble"*) or independently
+        (*"Distinct"*).
 
         #### Place Event Markers:
         Manually add event markers at specified time points. Will add an
         `event_channel` to the data table if not already specified, otherwise
-        will add events to an existing `event_channel`.
+        will add character event labels or numeric time values to an existing `event_channel` in the appropriate format.
 
         #### Keep All Columns:
         Either keep all columns in the file data table (the default), or keep 
@@ -561,6 +568,11 @@ ui <- page_navbar(
                 href = "https://bsky.app/profile/jemarnold.bsky.social",
                 target = "_blank",
                 icon("bluesky"),
+            ),
+            tags$a(
+                href = "https://www.linkedin.com/in/jem--arnold/",
+                target = "_blank",
+                icon("linkedin"),
             ),
             tags$a(
                 href = "https://twitter.com/jem_arnold",
@@ -603,7 +615,8 @@ server <- function(input, output, session) {
             nirs_channels = attr(raw_data(), "nirs_channels"),
             time_channel = attr(raw_data(), "time_channel"),
             event_channel = attr(raw_data(), "event_channel"),
-            sample_rate = attr(raw_data(), "sample_rate")
+            sample_rate = attr(raw_data(), "sample_rate"),
+            nirs_device = attr(raw_data(), "nirs_device")
         ))
     })
 
@@ -628,7 +641,7 @@ server <- function(input, output, session) {
                     return(NULL)
                 }
             )
-            print("do_read run")
+            
             req(out)
             raw_data_err(NULL)
             raw_data_val(out)
@@ -644,19 +657,26 @@ server <- function(input, output, session) {
 
         if (!nchar(isolate(input$nirs_channels) %||% "")) {
             updateTextInput(
-                session, "nirs_channels",
+                session,
+                "nirs_channels",
                 value = paste(md$nirs_channels, collapse = ", ")
             )
         }
         if (!nchar(isolate(input$time_channel) %||% "")) {
             updateTextInput(
-                session, "time_channel",
-                value = md$time_channel %||% ""
+                session,
+                "time_channel",
+                value = if (md$nirs_device == "Artinis") {
+                    "sample = 1"
+                } else {
+                    md$time_channel %||% ""
+                }
             )
         }
         if (is.na(isolate(input$sample_rate) %||% NA)) {
             updateNumericInput(
-                session, "sample_rate",
+                session,
+                "sample_rate",
                 value = md$sample_rate
             )
         }
@@ -704,7 +724,8 @@ server <- function(input, output, session) {
                     value = 2,
                     min = 1,
                     max = 10,
-                    step = 1
+                    step = 1,
+                    updateOn = "blur"
                 ),
                 numericInput(
                     "fc",
@@ -712,7 +733,8 @@ server <- function(input, output, session) {
                     value = 0.1,
                     min = 0,
                     # max = metadata()$sample_rate * 0.5,
-                    step = 0.05
+                    step = 0.05,
+                    updateOn = "blur"
                 )
             ),
             "Moving-Average" = tagList(
@@ -752,7 +774,8 @@ server <- function(input, output, session) {
                 numericInput(
                     "shift_to",
                     label = "Shift To",
-                    value = 0
+                    value = 0,
+                    updateOn = "blur"
                 ),
                 selectInput(
                     "shift_position",
@@ -762,7 +785,8 @@ server <- function(input, output, session) {
                 numericInput(
                     "shift_span",
                     label = "Shift Timespan",
-                    value = 1
+                    value = 1,
+                    updateOn = "blur"
                 ),
                 selectInput(
                     "shift_which_cols",
@@ -782,12 +806,14 @@ server <- function(input, output, session) {
                 numericInput(
                     "rescale_min",
                     "Rescale Range Minimum",
-                    value = 0
+                    value = 0,
+                    updateOn = "blur"
                 ),
                 numericInput(
                     "rescale_max",
                     label = "Rescale Range Maximum",
-                    value = 100
+                    value = 100,
+                    updateOn = "blur"
                 ),
                 selectInput(
                     "rescale_which_cols",
@@ -798,7 +824,21 @@ server <- function(input, output, session) {
         }
     })
 
-    ## reactive trimmed_data ====================================================
+    ## untick show_raw when shift or rescale ticked
+    observeEvent(
+        list(input$shift_logical, input$rescale_logical),
+        {
+            if (
+                isTRUE(input$shift_logical) ||
+                    isTRUE(input$rescale_logical)
+            ) {
+                updateCheckboxInput(session, "show_raw", value = FALSE)
+            }
+        },
+        ignoreInit = TRUE
+    )
+
+    ## reactive trimmed_data ===========================================
     trimmed_data <- reactive({
         req(raw_data())
 
@@ -823,7 +863,7 @@ server <- function(input, output, session) {
                 !is.null(resample_rate),
                 mnirs::resample_mnirs,
                 resample_rate = resample_rate,
-                method = "linear" ## need the interpolation
+                method = "linear" ## need the interpolation for display
             )
 
         ## zero time after resample
@@ -852,7 +892,7 @@ server <- function(input, output, session) {
             outlier_cutoff <- NULL
             outlier_span <- NULL
         }
-        ## TODO not sure why I need this intermediate step, but I seem to do
+        ## not sure why I need this intermediate step, but I seem to do
         interp_method <- if (input$replace_missing) "linear" else NULL
 
         resampled_data() |>
