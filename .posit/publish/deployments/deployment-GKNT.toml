@@ -2,7 +2,7 @@
 '$schema' = 'https://cdn.posit.co/publisher/schemas/posit-publishing-record-schema-v3.json'
 server_type = 'connect_cloud'
 server_url = 'https://connect.posit.cloud'
-client_version = '1.35.4'
+client_version = '1.36.0'
 created_at = ''
 dismissed_at = ''
 type = 'r-shiny'
@@ -11,8 +11,8 @@ id = '019cfe8e-b6e7-4d4a-8a59-c598324375ea'
 dashboard_url = 'https://connect.posit.cloud/jemarnold/content/019cfe8e-b6e7-4d4a-8a59-c598324375ea'
 direct_url = 'https://019cfe8e-b6e7-4d4a-8a59-c598324375ea.share.connect.posit.cloud'
 logs_url = 'https://connect.posit.cloud/jemarnold/content/019cfe8e-b6e7-4d4a-8a59-c598324375ea/history'
-deployed_at = '2026-03-17T18:28:13-07:00'
-bundle_id = '019cfe8e-b6e9-64d2-b8d8-f80ba57bd34f'
+deployed_at = '2026-04-22T21:18:46-07:00'
+bundle_id = '019db88f-cc8e-eda0-1ddd-4afe2e52181f'
 files = [
   '.posit/publish/deployments/deployment-GKNT.toml',
   '.posit/publish/mnirs-app-7VLP.toml',
@@ -37,11 +37,11 @@ files = [
 title = 'mnirs-app'
 
 [configuration.r]
-version = '4.5.2'
+version = '4.5.3'
 
 [renv]
 [renv.r]
-version = '4.5.2'
+version = '4.5.3'
 
 [[renv.r.repositories]]
 name = 'CRAN'
@@ -206,6 +206,27 @@ needscompilation = 'yes'
 author = 'Object-Oriented Programming Working Group [cph], Davis Vaughan [aut], Jim Hester [aut] (ORCID: <https://orcid.org/0000-0002-2739-7082>), Tomasz Kalinowski [aut], Will Landau [aut], Michael Lawrence [aut], Martin Maechler [aut] (ORCID: <https://orcid.org/0000-0002-8685-9910>), Luke Tierney [aut], Hadley Wickham [aut, cre] (ORCID: <https://orcid.org/0000-0003-4757-117X>)'
 'config/testthat/edition' = '3'
 'config/needs/website' = 'sloop'
+
+[renv.packages.askpass]
+package = 'askpass'
+version = '1.2.1'
+source = 'Repository'
+repository = 'CRAN'
+hash = ''
+type = 'Package'
+title = 'Password Entry Utilities for R, Git, and SSH'
+'authors@r' = 'person("Jeroen", "Ooms", role = c("aut", "cre"),  email = "jeroenooms@gmail.com", comment = c(ORCID = "0000-0002-4035-0289"))'
+maintainer = 'Jeroen Ooms <jeroenooms@gmail.com>'
+description = "Cross-platform utilities for prompting the user for credentials or a  passphrase, for example to authenticate with a server or read a protected key. Includes native programs for MacOS and Windows, hence no 'tcltk' is required.  Password entry can be invoked in two different ways: directly from R via the  askpass() function, or indirectly as password-entry back-end for 'ssh-agent'  or 'git-credential' via the SSH_ASKPASS and GIT_ASKPASS environment variables. Thereby the user can be prompted for credentials or a passphrase if needed  when R calls out to git or ssh."
+url = 'https://r-lib.r-universe.dev/askpass'
+bugreports = 'https://github.com/r-lib/askpass/issues'
+license = 'MIT + file LICENSE'
+imports = ['sys (>= 2.1)']
+suggests = ['testthat']
+roxygennote = '7.2.3'
+encoding = 'UTF-8'
+needscompilation = 'yes'
+author = 'Jeroen Ooms [aut, cre] (<https://orcid.org/0000-0002-4035-0289>)'
 
 [renv.packages.base64enc]
 package = 'base64enc'
@@ -399,7 +420,7 @@ author = 'Jeroen Ooms [aut, cre] (ORCID: <https://orcid.org/0000-0002-4035-0289>
 
 [renv.packages.cpp11]
 package = 'cpp11'
-version = '0.5.3'
+version = '0.5.4'
 source = 'Repository'
 repository = 'CRAN'
 depends = ['R (>= 4.0.0)']
@@ -413,7 +434,7 @@ bugreports = 'https://github.com/r-lib/cpp11/issues'
 license = 'MIT + file LICENSE'
 suggests = ['bench', 'brio', 'callr', 'cli', 'covr', 'decor', 'desc', 'ggplot2', 'glue', 'knitr', 'lobstr', 'mockery', 'progress', 'rmarkdown', 'scales', 'Rcpp', 'testthat (>= 3.2.0)', 'tibble', 'utils', 'vctrs', 'withr']
 vignettebuilder = 'knitr'
-roxygennote = '7.3.2'
+roxygennote = '7.3.3'
 encoding = 'UTF-8'
 needscompilation = 'no'
 author = 'Davis Vaughan [aut, cre] (ORCID: <https://orcid.org/0000-0003-4777-038X>), Jim Hester [aut] (ORCID: <https://orcid.org/0000-0002-2739-7082>), Romain François [aut] (ORCID: <https://orcid.org/0000-0002-2444-4226>), Benjamin Kietzman [ctb], Posit Software, PBC [cph, fnd]'
@@ -462,6 +483,29 @@ encoding = 'UTF-8'
 needscompilation = 'no'
 author = 'Joe Cheng [aut], Carson Sievert [aut, cre] (ORCID: <https://orcid.org/0000-0002-4958-2844>), Posit Software, PBC [cph, fnd], jQuery Foundation [cph] (jQuery library and jQuery UI library), jQuery contributors [ctb, cph] (jQuery library; authors listed in inst/www/shared/jquery-AUTHORS.txt), Mark Otto [ctb] (Bootstrap library), Jacob Thornton [ctb] (Bootstrap library), Bootstrap contributors [ctb] (Bootstrap library), Twitter, Inc [cph] (Bootstrap library), Brian Reavis [ctb, cph] (selectize.js library), Kristopher Michael Kowal [ctb, cph] (es5-shim library), es5-shim contributors [ctb, cph] (es5-shim library), Denis Ineshin [ctb, cph] (ion.rangeSlider library), Sami Samhuri [ctb, cph] (Javascript strftime library)'
 'config/needs/website' = 'jcheng5/d3scatter, DT, leaflet, rmarkdown'
+
+[renv.packages.curl]
+package = 'curl'
+version = '7.0.0'
+source = 'Repository'
+repository = 'CRAN'
+depends = ['R (>= 3.0.0)']
+hash = ''
+type = 'Package'
+title = 'A Modern and Flexible Web Client for R'
+'authors@r' = 'c( person("Jeroen", "Ooms", role = c("aut", "cre"), email = "jeroenooms@gmail.com", comment = c(ORCID = "0000-0002-4035-0289")), person("Hadley", "Wickham", role = "ctb"), person("Posit Software, PBC", role = "cph"))'
+maintainer = 'Jeroen Ooms <jeroenooms@gmail.com>'
+description = "Bindings to 'libcurl' <https://curl.se/libcurl/> for performing fully configurable HTTP/FTP requests where responses can be processed in memory, on disk, or streaming via the callback or connection interfaces. Some knowledge of 'libcurl' is recommended; for a more-user-friendly web client see the  'httr2' package which builds on this package with http specific tools and logic."
+url = 'https://jeroen.r-universe.dev/curl'
+bugreports = 'https://github.com/jeroen/curl/issues'
+license = 'MIT + file LICENSE'
+suggests = ['spelling', 'testthat (>= 1.0.0)', 'knitr', 'jsonlite', 'later', 'rmarkdown', 'httpuv (>= 1.4.4)', 'webutils']
+vignettebuilder = 'knitr'
+roxygennote = '7.3.2'
+encoding = 'UTF-8'
+needscompilation = 'yes'
+author = 'Jeroen Ooms [aut, cre] (ORCID: <https://orcid.org/0000-0002-4035-0289>), Hadley Wickham [ctb], Posit Software, PBC [cph]'
+systemrequirements = 'libcurl (>= 7.73): libcurl-devel (rpm) or libcurl4-openssl-dev (deb)'
 
 [renv.packages.'data.table']
 package = 'data.table'
@@ -636,7 +680,7 @@ author = 'R Core Team [aut, cph, cre] (ROR: <https://ror.org/02zz1nj61>), Roger 
 
 [renv.packages.fs]
 package = 'fs'
-version = '1.6.7'
+version = '2.0.1'
 source = 'Repository'
 repository = 'CRAN'
 depends = ['R (>= 4.1)']
@@ -657,7 +701,7 @@ needscompilation = 'yes'
 author = 'Jim Hester [aut], Hadley Wickham [aut], Gábor Csárdi [aut], Jeroen Ooms [cre], libuv project contributors [cph] (libuv library), Joyent, Inc. and other Node contributors [cph] (libuv library), Posit Software, PBC [cph, fnd] (ROR: <https://ror.org/03wc8by49>)'
 'config/testthat/edition' = '3'
 'config/needs/website' = 'tidyverse/tidytemplate'
-systemrequirements = 'GNU make'
+systemrequirements = "libuv: libuv-devel (rpm) or libuv1-dev (deb). Alternatively to build the vendored libuv 'cmake' is required. GNU make."
 
 [renv.packages.generics]
 package = 'generics'
@@ -846,27 +890,52 @@ author = 'Ramnath Vaidyanathan [aut, cph], Yihui Xie [aut], JJ Allaire [aut], Jo
 
 [renv.packages.httpuv]
 package = 'httpuv'
-version = '1.6.16'
+version = '1.6.17'
 source = 'Repository'
 repository = 'CRAN'
 depends = ['R (>= 2.15.1)']
 hash = ''
 type = 'Package'
 title = 'HTTP and WebSocket Server Library'
-'authors@r' = 'c( person("Joe", "Cheng", , "joe@posit.co", role = "aut"), person("Winston", "Chang", , "winston@posit.co", role = c("aut", "cre")), person("Posit, PBC", "fnd", role = "cph"), person("Hector", "Corrada Bravo", role = "ctb"), person("Jeroen", "Ooms", role = "ctb"), person("Andrzej", "Krzemienski", role = "cph", comment = "optional.hpp"), person("libuv project contributors", role = "cph", comment = "libuv library, see src/libuv/AUTHORS file"), person("Joyent, Inc. and other Node contributors", role = "cph", comment = "libuv library, see src/libuv/AUTHORS file; and http-parser library, see src/http-parser/AUTHORS file"), person("Niels", "Provos", role = "cph", comment = "libuv subcomponent: tree.h"), person("Internet Systems Consortium, Inc.", role = "cph", comment = "libuv subcomponent: inet_pton and inet_ntop, contained in src/libuv/src/inet.c"), person("Alexander", "Chemeris", role = "cph", comment = "libuv subcomponent: stdint-msvc2008.h (from msinttypes)"), person("Google, Inc.", role = "cph", comment = "libuv subcomponent: pthread-fixes.c"), person("Sony Mobile Communcations AB", role = "cph", comment = "libuv subcomponent: pthread-fixes.c"), person("Berkeley Software Design Inc.", role = "cph", comment = "libuv subcomponent: android-ifaddrs.h, android-ifaddrs.c"), person("Kenneth", "MacKay", role = "cph", comment = "libuv subcomponent: android-ifaddrs.h, android-ifaddrs.c"), person("Emergya (Cloud4all, FP7/2007-2013, grant agreement no 289016)", role = "cph", comment = "libuv subcomponent: android-ifaddrs.h, android-ifaddrs.c"), person("Steve", "Reid", role = "aut", comment = "SHA-1 implementation"), person("James", "Brown", role = "aut", comment = "SHA-1 implementation"), person("Bob", "Trower", role = "aut", comment = "base64 implementation"), person("Alexander", "Peslyak", role = "aut", comment = "MD5 implementation"), person("Trantor Standard Systems", role = "cph", comment = "base64 implementation"), person("Igor", "Sysoev", role = "cph", comment = "http-parser") )'
+'authors@r' = 'c( person("Joe", "Cheng", , "joe@posit.co", role = "aut"), person("Winston", "Chang", , "winston@posit.co", role = c("aut", "cre")), person("Posit, PBC", role = c("cph", "fnd"), comment = c(ROR = "03wc8by49")), person("Hector", "Corrada Bravo", role = "ctb"), person("Jeroen", "Ooms", role = "ctb"), person("Andrzej", "Krzemienski", role = "cph", comment = "optional.hpp"), person("libuv project contributors", role = "cph", comment = "libuv library, see src/libuv/AUTHORS file"), person("Joyent, Inc. and other Node contributors", role = "cph", comment = "libuv library, see src/libuv/AUTHORS file; and http-parser library, see src/http-parser/AUTHORS file"), person("Niels", "Provos", role = "cph", comment = "libuv subcomponent: tree.h"), person("Internet Systems Consortium, Inc.", role = "cph", comment = "libuv subcomponent: inet_pton and inet_ntop, contained in src/libuv/src/inet.c"), person("Alexander", "Chemeris", role = "cph", comment = "libuv subcomponent: stdint-msvc2008.h (from msinttypes)"), person("Google, Inc.", role = "cph", comment = "libuv subcomponent: pthread-fixes.c"), person("Sony Mobile Communcations AB", role = "cph", comment = "libuv subcomponent: pthread-fixes.c"), person("Berkeley Software Design Inc.", role = "cph", comment = "libuv subcomponent: android-ifaddrs.h, android-ifaddrs.c"), person("Kenneth", "MacKay", role = "cph", comment = "libuv subcomponent: android-ifaddrs.h, android-ifaddrs.c"), person("Emergya (Cloud4all, FP7/2007-2013, grant agreement no 289016)", role = "cph", comment = "libuv subcomponent: android-ifaddrs.h, android-ifaddrs.c"), person("Steve", "Reid", role = "aut", comment = "SHA-1 implementation"), person("James", "Brown", role = "aut", comment = "SHA-1 implementation"), person("Bob", "Trower", role = "aut", comment = "base64 implementation"), person("Alexander", "Peslyak", role = "aut", comment = "MD5 implementation"), person("Trantor Standard Systems", role = "cph", comment = "base64 implementation"), person("Igor", "Sysoev", role = "cph", comment = "http-parser") )'
 maintainer = 'Winston Chang <winston@posit.co>'
 description = 'Provides low-level socket and protocol support for handling HTTP and WebSocket requests directly from within R. It is primarily intended as a building block for other packages, rather than making it particularly easy to create complete web applications using httpuv alone.  httpuv is built on top of the libuv and http-parser C libraries, both of which were developed by Joyent, Inc. (See LICENSE file for libuv and http-parser license information.)'
-url = 'https://github.com/rstudio/httpuv'
+url = 'https://rstudio.github.io/httpuv/, https://github.com/rstudio/httpuv'
 bugreports = 'https://github.com/rstudio/httpuv/issues'
 license = 'GPL (>= 2) | file LICENSE'
 imports = ['later (>= 0.8.0)', 'promises', 'R6', 'Rcpp (>= 1.0.7)', 'utils']
-suggests = ['callr', 'curl', 'jsonlite', 'testthat', 'websocket']
+suggests = ['callr', 'curl', 'jsonlite', 'testthat (>= 3.0.0)', 'websocket']
 linkingto = ['later', 'Rcpp']
-roxygennote = '7.3.2'
+roxygennote = '7.3.3'
 encoding = 'UTF-8'
 needscompilation = 'yes'
-author = 'Joe Cheng [aut], Winston Chang [aut, cre], Posit, PBC fnd [cph], Hector Corrada Bravo [ctb], Jeroen Ooms [ctb], Andrzej Krzemienski [cph] (optional.hpp), libuv project contributors [cph] (libuv library, see src/libuv/AUTHORS file), Joyent, Inc. and other Node contributors [cph] (libuv library, see src/libuv/AUTHORS file; and http-parser library, see src/http-parser/AUTHORS file), Niels Provos [cph] (libuv subcomponent: tree.h), Internet Systems Consortium, Inc. [cph] (libuv subcomponent: inet_pton and inet_ntop, contained in src/libuv/src/inet.c), Alexander Chemeris [cph] (libuv subcomponent: stdint-msvc2008.h (from msinttypes)), Google, Inc. [cph] (libuv subcomponent: pthread-fixes.c), Sony Mobile Communcations AB [cph] (libuv subcomponent: pthread-fixes.c), Berkeley Software Design Inc. [cph] (libuv subcomponent: android-ifaddrs.h, android-ifaddrs.c), Kenneth MacKay [cph] (libuv subcomponent: android-ifaddrs.h, android-ifaddrs.c), Emergya (Cloud4all, FP7/2007-2013, grant agreement no 289016) [cph] (libuv subcomponent: android-ifaddrs.h, android-ifaddrs.c), Steve Reid [aut] (SHA-1 implementation), James Brown [aut] (SHA-1 implementation), Bob Trower [aut] (base64 implementation), Alexander Peslyak [aut] (MD5 implementation), Trantor Standard Systems [cph] (base64 implementation), Igor Sysoev [cph] (http-parser)'
+author = 'Joe Cheng [aut], Winston Chang [aut, cre], Posit, PBC [cph, fnd] (ROR: <https://ror.org/03wc8by49>), Hector Corrada Bravo [ctb], Jeroen Ooms [ctb], Andrzej Krzemienski [cph] (optional.hpp), libuv project contributors [cph] (libuv library, see src/libuv/AUTHORS file), Joyent, Inc. and other Node contributors [cph] (libuv library, see src/libuv/AUTHORS file; and http-parser library, see src/http-parser/AUTHORS file), Niels Provos [cph] (libuv subcomponent: tree.h), Internet Systems Consortium, Inc. [cph] (libuv subcomponent: inet_pton and inet_ntop, contained in src/libuv/src/inet.c), Alexander Chemeris [cph] (libuv subcomponent: stdint-msvc2008.h (from msinttypes)), Google, Inc. [cph] (libuv subcomponent: pthread-fixes.c), Sony Mobile Communcations AB [cph] (libuv subcomponent: pthread-fixes.c), Berkeley Software Design Inc. [cph] (libuv subcomponent: android-ifaddrs.h, android-ifaddrs.c), Kenneth MacKay [cph] (libuv subcomponent: android-ifaddrs.h, android-ifaddrs.c), Emergya (Cloud4all, FP7/2007-2013, grant agreement no 289016) [cph] (libuv subcomponent: android-ifaddrs.h, android-ifaddrs.c), Steve Reid [aut] (SHA-1 implementation), James Brown [aut] (SHA-1 implementation), Bob Trower [aut] (base64 implementation), Alexander Peslyak [aut] (MD5 implementation), Trantor Standard Systems [cph] (base64 implementation), Igor Sysoev [cph] (http-parser)'
+'config/testthat/edition' = '3'
+'config/needs/website' = 'tidyverse/tidytemplate'
 systemrequirements = 'GNU make, zlib'
+
+[renv.packages.httr]
+package = 'httr'
+version = '1.4.8'
+source = 'Repository'
+repository = 'CRAN'
+depends = ['R (>= 3.6)']
+hash = ''
+title = 'Tools for Working with URLs and HTTP'
+'authors@r' = 'c( person("Hadley", "Wickham", , "hadley@posit.co", role = c("aut", "cre")), person("Posit Software, PBC", role = c("cph", "fnd")) )'
+maintainer = 'Hadley Wickham <hadley@posit.co>'
+description = 'Useful tools for working with HTTP organised by HTTP verbs (GET(), POST(), etc). Configuration functions make it easy to control additional request components (authenticate(), add_headers() and so on).'
+url = 'https://httr.r-lib.org/, https://github.com/r-lib/httr'
+bugreports = 'https://github.com/r-lib/httr/issues'
+license = 'MIT + file LICENSE'
+imports = ['curl (>= 5.1.0)', 'jsonlite', 'mime', 'openssl (>= 0.8)', 'R6']
+suggests = ['covr', 'httpuv', 'jpeg', 'knitr', 'png', 'readr', 'rmarkdown', 'testthat (>= 0.8.0)', 'xml2']
+vignettebuilder = 'knitr'
+roxygennote = '7.3.3'
+encoding = 'UTF-8'
+needscompilation = 'no'
+author = 'Hadley Wickham [aut, cre], Posit Software, PBC [cph, fnd]'
+'config/needs/website' = 'tidyverse/tidytemplate'
 
 [renv.packages.isoband]
 package = 'isoband'
@@ -1060,7 +1129,7 @@ author = 'Lionel Henry [aut, cre], Hadley Wickham [aut] (ORCID: <https://orcid.o
 
 [renv.packages.magrittr]
 package = 'magrittr'
-version = '2.0.4'
+version = '2.0.5'
 source = 'Repository'
 repository = 'CRAN'
 depends = ['R (>= 3.4.0)']
@@ -1140,21 +1209,22 @@ author = 'Yihui Xie [aut, cre] (<https://orcid.org/0000-0003-0645-5666>, https:/
 
 [renv.packages.mnirs]
 package = 'mnirs'
-version = '0.5.0'
+version = '0.6.3'
 source = 'GitHub'
 repository = ''
 depends = ['R (>= 4.1)']
 hash = ''
 remote_type = 'github'
-remote_ref = 'HEAD'
-remote_sha = '00666a8b605b23d153481ae1700548bdb08eef70'
+remote_pkg_ref = 'jemarnold/mnirs@dev'
+remote_ref = 'dev'
+remote_sha = '8a82f20a7a07e4a0bdd5fc6fd781d46847b5760c'
 remote_host = 'api.github.com'
 remote_repo = 'mnirs'
 remote_username = 'jemarnold'
 title = 'Muscle Near-Infrared Spectroscopy Processing and Analysis'
 'authors@r' = 'person("Jem", "Arnold", , "jem.arnold@gmail.com", role = c("aut", "cre", "cph"), comment = c(ORCID = "0000-0003-3908-9447"))'
 maintainer = 'Jem Arnold <jem.arnold@gmail.com>'
-description = 'Read, process, and analyse data from muscle near-infrared spectroscopy (mNIRS) devices. Import raw data from .csv or .xls(x) files and return a time-series data frame with metadata. Includes standardised methods for cleaning, filtering, and pre-processing mNIRS data for subsequent analysis, with a custom plot theme and colour palette. Intended for mNIRS researchers and practitioners in exercise physiology, sports science, and clinical rehabilitation  with minimal  coding experience required.'
+description = 'Read, process, and analyse data from muscle near-infrared spectroscopy (mNIRS) devices. Import raw data from .csv or .xls(x) files and return time-series data and metadata. Includes standardised methods for cleaning, filtering, and pre-processing mNIRS data for subsequent analysis. Also includes a custom plot theme and colour palette. Intended for mNIRS researchers and practitioners in exercise physiology, sports science, and clinical rehabilitation with minimal coding experience required.'
 url = 'https://jemarnold.github.io/mnirs/, https://github.com/jemarnold/mnirs'
 bugreports = 'https://github.com/jemarnold/mnirs/issues'
 license = 'MIT + file LICENSE'
@@ -1204,6 +1274,29 @@ license = 'GPL-2 | GPL-3'
 suggests = ['MASS']
 needscompilation = 'yes'
 author = 'Brian Ripley [aut, cre, cph], William Venables [cph]'
+
+[renv.packages.openssl]
+package = 'openssl'
+version = '2.3.5'
+source = 'Repository'
+repository = 'CRAN'
+hash = ''
+type = 'Package'
+title = 'Toolkit for Encryption, Signatures and Certificates Based on OpenSSL'
+'authors@r' = 'c(person("Jeroen", "Ooms", role = c("aut", "cre"), email = "jeroenooms@gmail.com", comment = c(ORCID = "0000-0002-4035-0289")), person("Oliver", "Keyes", role = "ctb"))'
+maintainer = 'Jeroen Ooms <jeroenooms@gmail.com>'
+description = "Bindings to OpenSSL libssl and libcrypto, plus custom SSH key parsers. Supports RSA, DSA and EC curves P-256, P-384, P-521, and curve25519. Cryptographic signatures can either be created and verified manually or via x509 certificates.  AES can be used in cbc, ctr or gcm mode for symmetric encryption; RSA for asymmetric (public key) encryption or EC for Diffie Hellman. High-level envelope functions  combine RSA and AES for encrypting arbitrary sized data. Other utilities include key generators, hash functions (md5, sha1, sha256, etc), base64 encoder, a secure random number generator, and 'bignum' math methods for manually performing crypto  calculations on large multibyte integers."
+url = 'https://jeroen.r-universe.dev/openssl'
+bugreports = 'https://github.com/jeroen/openssl/issues'
+license = 'MIT + file LICENSE'
+imports = ['askpass']
+suggests = ['curl', 'testthat (>= 2.1.0)', 'digest', 'knitr', 'rmarkdown', 'jsonlite', 'jose', 'sodium']
+vignettebuilder = 'knitr'
+roxygennote = '7.3.2'
+encoding = 'UTF-8'
+needscompilation = 'yes'
+author = 'Jeroen Ooms [aut, cre] (ORCID: <https://orcid.org/0000-0002-4035-0289>), Oliver Keyes [ctb]'
+systemrequirements = 'OpenSSL >= 1.0.2'
 
 [renv.packages.otel]
 package = 'otel'
@@ -1267,6 +1360,27 @@ suggests = ['covr', 'testthat', 'disposables (>= 1.0.3)']
 encoding = 'UTF-8'
 needscompilation = 'no'
 author = 'Gábor Csárdi'
+
+[renv.packages.plotly]
+package = 'plotly'
+version = '4.12.0'
+source = 'Repository'
+repository = 'CRAN'
+depends = ['R (>= 3.5.0)', 'ggplot2 (>= 3.0.0)']
+hash = ''
+title = "Create Interactive Web Graphics via 'plotly.js'"
+'authors@r' = 'c(person("Carson", "Sievert", role = c("aut", "cre"), email = "cpsievert1@gmail.com", comment = c(ORCID = "0000-0002-4958-2844")), person("Chris", "Parmer", role = "aut", email = "chris@plot.ly"), person("Toby", "Hocking", role = "aut", email = "tdhock5@gmail.com"), person("Scott", "Chamberlain", role = "aut", email = "myrmecocystus@gmail.com"), person("Karthik", "Ram", role = "aut", email = "karthik.ram@gmail.com"), person("Marianne", "Corvellec", role = "aut", email = "marianne.corvellec@igdore.org", comment = c(ORCID = "0000-0002-1994-3581")), person("Pedro", "Despouy", role = "aut", email = "pedro@plot.ly"), person("Salim", "Brüggemann", role = "ctb", email = "salim-b@pm.me", comment = c(ORCID = "0000-0002-5329-5987")), person("Plotly Technologies Inc.", role = "cph"))'
+maintainer = 'Carson Sievert <cpsievert1@gmail.com>'
+description = "Create interactive web graphics from 'ggplot2' graphs and/or a custom interface to the (MIT-licensed) JavaScript library 'plotly.js' inspired by the grammar of graphics."
+url = 'https://plotly-r.com, https://github.com/plotly/plotly.R, https://plotly.com/r/'
+bugreports = 'https://github.com/plotly/plotly.R/issues'
+license = 'MIT + file LICENSE'
+imports = ['tools', 'scales', 'httr (>= 1.3.0)', 'jsonlite (>= 1.6)', 'magrittr', 'digest', 'viridisLite', 'base64enc', 'htmltools (>= 0.3.6)', 'htmlwidgets (>= 1.5.2.9001)', 'tidyr (>= 1.0.0)', 'RColorBrewer', 'dplyr', 'vctrs', 'tibble', 'lazyeval (>= 0.2.0)', 'rlang (>= 1.0.0)', 'crosstalk', 'purrr', 'data.table', 'promises']
+suggests = ['MASS', 'maps', 'hexbin', 'ggthemes', 'GGally', 'ggalluvial', 'testthat', 'knitr', 'shiny (>= 1.1.0)', 'shinytest2', 'curl', 'rmarkdown', 'Cairo', 'broom', 'webshot', 'listviewer', 'dendextend', 'sf', 'png', 'IRdisplay', 'processx', 'plotlyGeoAssets', 'forcats', 'withr', 'palmerpenguins', 'rversions', 'reticulate', 'rsvg', 'ggridges']
+roxygennote = '7.3.3'
+encoding = 'UTF-8'
+needscompilation = 'no'
+author = 'Carson Sievert [aut, cre] (ORCID: <https://orcid.org/0000-0002-4958-2844>), Chris Parmer [aut], Toby Hocking [aut], Scott Chamberlain [aut], Karthik Ram [aut], Marianne Corvellec [aut] (ORCID: <https://orcid.org/0000-0002-1994-3581>), Pedro Despouy [aut], Salim Brüggemann [ctb] (ORCID: <https://orcid.org/0000-0002-5329-5987>), Plotly Technologies Inc. [cph]'
 
 [renv.packages.prettyunits]
 package = 'prettyunits'
@@ -1429,7 +1543,7 @@ author = 'Gabor Csardi'
 
 [renv.packages.renv]
 package = 'renv'
-version = '1.1.8'
+version = '1.2.2'
 source = 'Repository'
 repository = 'CRAN'
 hash = ''
@@ -1446,14 +1560,14 @@ suggests = ['BiocManager', 'cli', 'compiler', 'covr', 'cpp11', 'curl', 'devtools
 vignettebuilder = 'knitr'
 roxygennote = '7.3.3'
 encoding = 'UTF-8'
-needscompilation = 'yes'
+needscompilation = 'no'
 author = 'Kevin Ushey [aut, cre] (ORCID: <https://orcid.org/0000-0003-2880-7407>), Hadley Wickham [aut] (ORCID: <https://orcid.org/0000-0003-4757-117X>), Posit Software, PBC [cph, fnd]'
 'config/testthat/edition' = '3'
 'config/needs/website' = 'tidyverse/tidytemplate'
 
 [renv.packages.rlang]
 package = 'rlang'
-version = '1.1.7'
+version = '1.2.0'
 source = 'Repository'
 repository = 'CRAN'
 depends = ['R (>= 4.0.0)']
@@ -1466,7 +1580,7 @@ url = 'https://rlang.r-lib.org, https://github.com/r-lib/rlang'
 bugreports = 'https://github.com/r-lib/rlang/issues'
 license = 'MIT + file LICENSE'
 imports = ['utils']
-suggests = ['cli (>= 3.1.0)', 'covr', 'crayon', 'desc', 'fs', 'glue', 'knitr', 'magrittr', 'methods', 'pillar', 'pkgload', 'rmarkdown', 'stats', 'testthat (>= 3.2.0)', 'tibble', 'usethis', 'vctrs (>= 0.2.3)', 'withr']
+suggests = ['cli (>= 3.1.0)', 'covr', 'crayon', 'desc', 'fs', 'glue', 'knitr', 'magrittr', 'methods', 'pillar', 'pkgload', 'rmarkdown', 'stats', 'testthat (>= 3.3.2)', 'tibble', 'usethis', 'vctrs (>= 0.2.3)', 'withr']
 roxygennote = '7.3.3'
 encoding = 'UTF-8'
 needscompilation = 'yes'
@@ -1476,7 +1590,7 @@ author = "Lionel Henry [aut, cre], Hadley Wickham [aut], mikefc [cph] (Hash impl
 
 [renv.packages.rmarkdown]
 package = 'rmarkdown'
-version = '2.30'
+version = '2.31'
 source = 'Repository'
 repository = 'CRAN'
 depends = ['R (>= 3.0)']
@@ -1492,7 +1606,7 @@ license = 'GPL-3'
 imports = ['bslib (>= 0.2.5.1)', 'evaluate (>= 0.13)', 'fontawesome (>= 0.5.0)', 'htmltools (>= 0.5.1)', 'jquerylib', 'jsonlite', 'knitr (>= 1.43)', 'methods', 'tinytex (>= 0.31)', 'tools', 'utils', 'xfun (>= 0.36)', 'yaml (>= 2.1.19)']
 suggests = ['digest', 'dygraphs', 'fs', 'rsconnect', 'downlit (>= 0.4.0)', 'katex (>= 1.4.0)', 'sass (>= 0.4.0)', 'shiny (>= 1.6.0)', 'testthat (>= 3.0.3)', 'tibble', 'vctrs', 'cleanrmd', 'withr (>= 2.4.2)', 'xml2']
 vignettebuilder = 'knitr'
-roxygennote = '7.3.2'
+roxygennote = '7.3.3'
 encoding = 'UTF-8'
 needscompilation = 'no'
 author = 'JJ Allaire [aut], Yihui Xie [aut, cre] (ORCID: <https://orcid.org/0000-0003-0645-5666>), Christophe Dervieux [aut] (ORCID: <https://orcid.org/0000-0003-4474-2498>), Jonathan McPherson [aut], Javier Luraschi [aut], Kevin Ushey [aut], Aron Atkins [aut], Hadley Wickham [aut], Joe Cheng [aut], Winston Chang [aut], Richard Iannone [aut] (ORCID: <https://orcid.org/0000-0003-3925-190X>), Andrew Dunning [ctb] (ORCID: <https://orcid.org/0000-0003-0464-5036>), Atsushi Yasumoto [ctb, cph] (ORCID: <https://orcid.org/0000-0002-8335-495X>, cph: Number sections Lua filter), Barret Schloerke [ctb], Carson Sievert [ctb] (ORCID: <https://orcid.org/0000-0002-4958-2844>), Devon Ryan [ctb] (ORCID: <https://orcid.org/0000-0002-8549-0971>), Frederik Aust [ctb] (ORCID: <https://orcid.org/0000-0003-4900-788X>), Jeff Allen [ctb], JooYoung Seo [ctb] (ORCID: <https://orcid.org/0000-0002-4064-6012>), Malcolm Barrett [ctb], Rob Hyndman [ctb], Romain Lesur [ctb], Roy Storey [ctb], Ruben Arslan [ctb], Sergio Oller [ctb], Posit Software, PBC [cph, fnd], jQuery UI contributors [ctb, cph] (jQuery UI library; authors listed in inst/rmd/h/jqueryui/AUTHORS.txt), Mark Otto [ctb] (Bootstrap library), Jacob Thornton [ctb] (Bootstrap library), Bootstrap contributors [ctb] (Bootstrap library), Twitter, Inc [cph] (Bootstrap library), Alexander Farkas [ctb, cph] (html5shiv library), Scott Jehl [ctb, cph] (Respond.js library), Ivan Sagalaev [ctb, cph] (highlight.js library), Greg Franko [ctb, cph] (tocify library), John MacFarlane [ctb, cph] (Pandoc templates), Google, Inc. [ctb, cph] (ioslides library), Dave Raggett [ctb] (slidy library), W3C [cph] (slidy library), Dave Gandy [ctb, cph] (Font-Awesome), Ben Sperry [ctb] (Ionicons), Drifty [cph] (Ionicons), Aidan Lister [ctb, cph] (jQuery StickyTabs), Benct Philip Jonsson [ctb, cph] (pagebreak Lua filter), Albert Krewinkel [ctb, cph] (pagebreak Lua filter)'
@@ -1628,13 +1742,14 @@ author = 'Uwe Ligges [aut, cre] (new maintainer), Tom Short [aut] (port to R), P
 
 [renv.packages.sourcetools]
 package = 'sourcetools'
-version = '0.1.7-1'
+version = '0.1.7-2'
 source = 'Repository'
 repository = 'CRAN'
 depends = ['R (>= 3.0.2)']
 hash = ''
 type = 'Package'
 title = 'Tools for Reading, Tokenizing and Parsing R Code'
+'authors@r' = 'person("Kevin", "Ushey", role = c("aut", "cre"), email = "kevinushey@gmail.com")'
 maintainer = 'Kevin Ushey <kevinushey@gmail.com>'
 description = "Tools for the reading and tokenization of R code. The 'sourcetools' package provides both an R and C++ interface for the tokenization of R code, and helpers for interacting with the tokenized representation of R code."
 bugreports = 'https://github.com/kevinushey/sourcetools/issues'
@@ -1643,7 +1758,7 @@ suggests = ['testthat']
 roxygennote = '5.0.1'
 encoding = 'UTF-8'
 needscompilation = 'yes'
-author = 'Kevin Ushey'
+author = 'Kevin Ushey [aut, cre]'
 
 [renv.packages.spatial]
 package = 'spatial'
@@ -1724,6 +1839,26 @@ license = 'LGPL (>= 2)'
 imports = ['graphics', 'Matrix', 'methods', 'splines', 'stats', 'utils']
 needscompilation = 'yes'
 author = 'Terry M Therneau [aut, cre], Thomas Lumley [ctb, trl] (original S->R port and R maintainer until 2009), Atkinson Elizabeth [ctb], Crowson Cynthia [ctb]'
+
+[renv.packages.sys]
+package = 'sys'
+version = '3.4.3'
+source = 'Repository'
+repository = 'CRAN'
+hash = ''
+type = 'Package'
+title = 'Powerful and Reliable Tools for Running System Commands in R'
+'authors@r' = 'c(person("Jeroen", "Ooms", role = c("aut", "cre"),  email = "jeroenooms@gmail.com", comment = c(ORCID = "0000-0002-4035-0289")), person("Gábor", "Csárdi", , "csardi.gabor@gmail.com", role = "ctb"))'
+maintainer = 'Jeroen Ooms <jeroenooms@gmail.com>'
+description = 'Drop-in replacements for the base system2() function with fine control and consistent behavior across platforms. Supports clean interruption, timeout,  background tasks, and streaming STDIN / STDOUT / STDERR over binary or text  connections. Arguments on Windows automatically get encoded and quoted to work  on different locales.'
+url = 'https://jeroen.r-universe.dev/sys'
+bugreports = 'https://github.com/jeroen/sys/issues'
+license = 'MIT + file LICENSE'
+suggests = ['unix (>= 1.4)', 'spelling', 'testthat']
+roxygennote = '7.1.1'
+encoding = 'UTF-8'
+needscompilation = 'yes'
+author = 'Jeroen Ooms [aut, cre] (<https://orcid.org/0000-0002-4035-0289>), Gábor Csárdi [ctb]'
 
 [renv.packages.thematic]
 package = 'thematic'
@@ -1823,7 +1958,7 @@ author = 'Lionel Henry [aut, cre], Hadley Wickham [aut], Posit Software, PBC [cp
 
 [renv.packages.tinytex]
 package = 'tinytex'
-version = '0.58'
+version = '0.59'
 source = 'Repository'
 repository = 'CRAN'
 hash = ''
@@ -1866,7 +2001,7 @@ author = 'Patrick O. Perry [aut, cph], Kirill Müller [cre] (ORCID: <https://orc
 
 [renv.packages.vctrs]
 package = 'vctrs'
-version = '0.7.1'
+version = '0.7.2'
 source = 'Repository'
 repository = 'CRAN'
 depends = ['R (>= 4.0.0)']
@@ -1956,7 +2091,7 @@ systemrequirements = 'zlib'
 
 [renv.packages.xfun]
 package = 'xfun'
-version = '0.56'
+version = '0.57'
 source = 'Repository'
 repository = 'CRAN'
 depends = ['R (>= 3.2.0)']
