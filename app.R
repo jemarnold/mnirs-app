@@ -731,8 +731,9 @@ server <- function(input, output, session) {
                 selectInput(
                     "butter_type",
                     "Butterworth Filter Type",
-                    ## TODO #, "High-Pass", "Stop-Band", "Pass-Band")
-                    choices = c("Low-Pass")
+                    choices = c(
+                        "Low-Pass", "High-Pass"#, "Stop-Band", "Pass-Band"
+                    )
                 ),
                 numericInput(
                     "order",
