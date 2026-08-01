@@ -5,9 +5,14 @@ event_shapes <- function(manual_events, ink, time_labels = FALSE) {
         return(list())
     }
 
-    ## match the POSIXct x-axis when time is displayed as h:mm:ss
+    ## match the POSIXct x-axis when time is displayed as h:mm:ss.
+    ## pre-format to ISO8601: plotlyProxy sends shapes through Shiny's
+    ## JSON encoder, which truncates POSIXct to whole seconds
     events <- if (time_labels) {
-        lapply(manual_events, \(.e) .POSIXct(as.numeric(.e), tz = "UTC"))
+        format(
+            .POSIXct(as.numeric(manual_events), tz = "UTC"),
+            "%Y-%m-%dT%H:%M:%OS3"
+        )
     } else {
         manual_events
     }
@@ -38,7 +43,9 @@ plotly_mnirs <- function(
     show_raw = FALSE
 ) {
     time_ch <- attr(data, "time_channel")
-    nirs_ch <- attr(data, "nirs_channels")
+    ## alphabetical legend order, independent of the nirs_channels
+    ## attribute order set upstream
+    nirs_ch <- sort(attr(data, "nirs_channels"))
     colours <- mnirs::palette_mnirs(length(nirs_ch))
 
     ## When labelling axis as h:mm:ss, render x as POSIXct so plotly
@@ -52,7 +59,12 @@ plotly_mnirs <- function(
     time_label <- if (time_labels) {
         mnirs::format_hmmss(time_vec)
     } else {
-        mnirs:::signif_trailing(time_vec, 3L)
+        ## decimal places, not sig figs: sig figs collapse adjacent
+        ## samples to the same hover time past ~1000 s
+        mnirs:::signif_trailing(
+            data[[time_ch]],
+            time_digits(data[[time_ch]])
+        )
     }
 
     plot <- plotly::plot_ly()

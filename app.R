@@ -760,13 +760,23 @@ server <- function(input, output, session) {
             "Select at least 2 of oxy / deoxy / total channels."
         ))
 
-        tryCatch(
+        out <- tryCatch(
             do.call(
                 mnirs::correct_blood_volume,
                 c(list(filtered_data()), channels)
             ),
             error = \(e) validate(need(FALSE, clean_cli_message(e)))
         )
+
+        ## correct_blood_volume() replaces nirs_channels with only the
+        ## channels passed to it; restore the rest so they survive to
+        ## the plot and export
+        attr(out, "nirs_channels") <- union(
+            attr(out, "nirs_channels"),
+            attr(filtered_data(), "nirs_channels")
+        )
+
+        return(out)
     }) |>
         bindCache(correct_key())
 
@@ -828,18 +838,22 @@ server <- function(input, output, session) {
             match_idx <- vapply(manual_events, \(.event) {
                 which.min(abs(time_vec - .event))
             }, integer(1L))
-            time_vals <- signif(time_vec[match_idx], 3)
+            ## keep the matched sample time; round only to display
+            ## precision so labels carry no floating-point tail
+            digits <- time_digits(time_vec)
+            time_vals <- round(time_vec[match_idx], digits)
+            event_labels <- paste0(
+                "event_",
+                vapply(time_vals, mnirs:::signif_trailing, character(1L), digits)
+            )
 
             if (is.null(event_channel)) {
                 nirs_data$event <- NA_character_
-                nirs_data$event[match_idx] <- paste0("event_", time_vals)
+                nirs_data$event[match_idx] <- event_labels
             } else if (is.numeric(nirs_data[[event_channel]])) {
                 nirs_data[[event_channel]][match_idx] <- time_vals
             } else {
-                nirs_data[[event_channel]][match_idx] <- paste0(
-                    "event_",
-                    time_vals
-                )
+                nirs_data[[event_channel]][match_idx] <- event_labels
             }
         }
 
@@ -894,8 +908,14 @@ server <- function(input, output, session) {
                 searchHighlight = FALSE
             )
         )
+        ## time shown as decimal places, not sig figs: past ~1000 s
+        ## sig figs collapse adjacent samples to the same value
         dt <- if (time_channel %in% setdiff(num_cols, int_cols)) {
-            formatSignif(dt, time_channel, digits = 3)
+            formatRound(
+                dt,
+                time_channel,
+                digits = time_digits(data[[time_channel]])
+            )
         } else {
             dt
         }

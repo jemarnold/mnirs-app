@@ -23,6 +23,12 @@ string_to_numeric <- function(x) {
     return(as.numeric(strsplit(x, split = "\\s*,\\s*")[[1L]]))
 }
 
+## Decimal places for displaying a time vector; capped to avoid
+## floating-point noise from non-terminating sample intervals (e.g. 3 Hz)
+time_digits <- function(x, max_digits = 2L) {
+    return(min(mnirs:::count_decimals(x), max_digits))
+}
+
 ## Clean CLI error messages
 clean_cli_message <- function(e) {
     msg <- cli::ansi_strip(conditionMessage(e))
