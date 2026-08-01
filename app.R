@@ -21,254 +21,8 @@ options(
     shiny.maxRequestSize = 50 * 1024^2
 )
 
-## Parse comma-separated name=value pairs
-split_named_vec <- function(x) {
-    if (!nchar(x)) {
-        return(NULL)
-    }
-
-    noquotes <- gsub('["\'`]', '', x)
-    channels_vec <- trimws(strsplit(noquotes, ",")[[1L]])
-    parts <- strsplit(channels_vec, "\\s*=\\s*")
-    names <- vapply(parts, `[`, character(1L), 1L)
-    vals <- vapply(parts, \(.x) {
-        if (length(.x) > 1L) paste(.x[-1L], collapse = "=") else .x[1L]
-    }, character(1L))
-
-    return(setNames(vals, names))
-}
-
-## Parse comma-separated numeric values
-string_to_numeric <- function(x) {
-    if (!nchar(x)) {
-        return(NULL)
-    }
-    return(as.numeric(strsplit(x, split = "\\s*,\\s*")[[1L]]))
-}
-
-## Clean CLI error messages
-clean_cli_message <- function(e) {
-    msg <- cli::ansi_strip(conditionMessage(e))
-    msg <- gsub("`|\\{\\.[^}]+\\}", "", msg)
-    msg <- gsub("\\s+", " ", msg)
-    return(trimws(msg))
-}
-
-## Convert blank/empty inputs to NULL
-blank_to_null <- function(x) {
-    if (is.null(x) || length(x) == 0L || all(is.na(x))) {
-        return(NULL)
-    }
-    if (is.character(x) && all(nchar(x) == 0L)) {
-        return(NULL)
-    }
-    return(x)
-}
-
-## Conditional data transformation
-apply_if <- function(data, condition, fn, ...) {
-    if (condition) return(fn(data, ...)) else return(data)
-}
-
-## Group channels for ensemble/distinct operations
-group_channels <- function(channels, mode) {
-    switch(
-        mode,
-        "Ensemble" = list(channels),
-        "Distinct" = as.list(channels)
-    )
-}
-
-## Trim rows from the head of a time series
-trim_head <- function(data, time_channel, trim) {
-    data[data[[time_channel]] > trim, ]
-}
-
-## Trim rows from the tail of a time series
-trim_tail <- function(data, time_channel, trim) {
-    cutoff <- max(data[[time_channel]], na.rm = TRUE) - trim
-    data[data[[time_channel]] < cutoff, ]
-}
-
-## Safe wrapper for filter_mnirs with error handling
-try_filter <- function(data, nirs_channels, time_channel, ...) {
-    tryCatch(
-        mnirs::filter_mnirs(
-            data,
-            nirs_channels = nirs_channels,
-            time_channel = time_channel,
-            ...
-        ),
-        error = \(e) {
-            validate(need(FALSE, clean_cli_message(e)))
-        }
-    )
-}
-
-## fractional h:mm:ss for hover (axis ticks use integer format_hmmss)
-format_hmmss_frac <- function(x) {
-    x <- as.numeric(x)
-    sign <- ifelse(x < 0, "-", "")
-    hrs <- as.integer(abs(x) %/% 3600)
-    mins <- as.integer((abs(x) %% 3600) %/% 60)
-    secs <- abs(x) %% 60
-    decimals <- min(3, max(nchar(sub("^[^.]*\\.?", "", format(secs)))))
-    width <- if (decimals == 0) 2 else decimals + 3
-    secs_str <- formatC(
-        secs, width = width, digits = decimals, format = "f", flag = "0"
-    )
-
-    out <- ifelse(
-        hrs > 0,
-        sprintf("%s%d:%02d:%s", sign, hrs, mins, secs_str),
-        sprintf("%s%02d:%s", sign, mins, secs_str)
-    )
-    out[is.na(x)] <- NA_character_
-    return(out)
-}
-
-## Build interactive plotly plot reproducing theme_mnirs() elements
-plotly_mnirs <- function(
-    data,
-    time_labels = FALSE,
-    ink = "#373a3c",
-    paper = "#fff",
-    manual_events = NULL,
-    base_size = 20,
-    raw_data = NULL
-) {
-    time_ch <- attr(data, "time_channel")
-    nirs_ch <- attr(data, "nirs_channels")
-    colours <- mnirs::palette_mnirs(length(nirs_ch))
-
-    ## When labelling axis as h:mm:ss, render x as POSIXct so plotly
-    ## auto-recomputes ticks on zoom
-    time_vec <- if (time_labels) {
-        .POSIXct(as.numeric(data[[time_ch]]), tz = "UTC")
-    } else {
-        data[[time_ch]]
-    }
-    
-    manual_events <- if (time_labels && length(manual_events)) {
-        lapply(manual_events, \(.e) .POSIXct(as.numeric(.e), tz = "UTC"))
-    } else {
-        manual_events
-    }
-
-    time_label <- if (time_labels) {
-        format_hmmss_frac(time_vec)
-    } else {
-        mnirs:::signif_trailing(time_vec, 3L)
-    }
-
-    plot <- plotly::plot_ly()
-
-    ## optional raw (unfiltered) traces drawn first at low alpha
-    if (!is.null(raw_data)) {
-        plot <- Reduce(\(p, i) {
-            plotly::add_trace(
-                p,
-                x = time_vec,
-                y = raw_data[[nirs_ch[[i]]]],
-                type = "scatter",
-                mode = "lines",
-                name = paste0(nirs_ch[[i]], " (raw)"),
-                showlegend = FALSE,
-                hoverinfo = "skip",
-                line = list(color = colours[[i]], width = 1),
-                opacity = 0.6
-            )
-        }, seq_along(nirs_ch), init = plot)
-    }
-
-    ## one line trace per NIRS channel
-    plot <- Reduce(\(p, i) {
-        plotly::add_trace(
-            p,
-            x = time_vec,
-            y = data[[nirs_ch[[i]]]],
-            type = "scatter",
-            mode = "lines",
-            name = nirs_ch[[i]],
-            showlegend = TRUE,
-            line = list(color = colours[[i]], width = 1.5),
-            text = time_label,
-            hovertemplate = paste0(
-                time_ch, ": %{text}<br>",
-                "<b>", nirs_ch[[i]], ":</b> %{y:.2f}<extra></extra>"
-            )
-        )
-    }, seq_along(nirs_ch), init = plot)
-
-    ## dashed vertical lines for manual events
-    shapes <- if (length(manual_events)) {
-        lapply(manual_events, \(.event) {
-            list(
-                type = "line",
-                x0 = .event,
-                x1 = .event,
-                xref = "x",
-                y0 = 0,
-                y1 = 1,
-                yref = "paper",
-                line = list(color = ink, dash = "dash", width = 1)
-            )
-        })
-    } else {
-        list()
-    }
-
-    ## x-axis with optional h:mm:ss tick text
-    xaxis <- list(
-        title = if (time_labels) paste(time_ch, "(h:mm:ss)") else time_ch,
-        showgrid = FALSE,
-        zeroline = FALSE,
-        showline = TRUE,
-        linecolor = ink,
-        color = ink
-    )
-    if (time_labels) {
-        xaxis$type <- "date"
-        xaxis$tickformat <- "%-H:%M:%S"
-    }
-
-    plotly::layout(
-        plot,
-        paper_bgcolor = paper,
-        plot_bgcolor = paper,
-        font = list(size = base_size * 0.7, color = ink),
-        xaxis = xaxis,
-        yaxis = list(
-            title = "mNIRS",
-            showgrid = FALSE,
-            zeroline = FALSE,
-            showline = TRUE,
-            linecolor = ink,
-            color = ink
-        ),
-        shapes = shapes,
-        showlegend = TRUE,
-        legend = list(
-            orientation = "h",
-            x = 1,
-            xanchor = "right",
-            y = 0.95,
-            yanchor = "bottom"
-        ),
-        hovermode = "closest",
-        margin = list(t = 40, r = 20, b = 50, l = 60)
-    ) |>
-        plotly::config(
-            displaylogo = FALSE,
-            modeBarButtonsToRemove = c(
-                "lasso2d",
-                "select2d",
-                "autoScale2d",
-                "hoverCompareCartesian",
-                "toggleSpikelines"
-            )
-        )
-}
+## helper functions sourced automatically from R/ directory:
+## R/utils.R, R/plotly_mnirs.R
 
 ## UI ===========================================================
 ui <- page_navbar(
@@ -320,7 +74,7 @@ ui <- page_navbar(
                     "upload_file",
                     label = NULL,
                     buttonLabel = "Upload File",
-                    accept = c('.xlsx', '.xls', '.csv', '.CSV')
+                    accept = c('.xlsx', '.xls', '.csv', '.CSV', '.txt', '.tsv')
                 ),
 
                 ## input channels
@@ -393,6 +147,7 @@ ui <- page_navbar(
 
                 ## replace outliers (column wise)
                 checkboxInput("replace_outliers", "Replace Outliers"),
+                uiOutput("outlier_ui"),
 
                 ## replace missing values (column wise)
                 checkboxInput("replace_missing", "Replace Missing Values"),
@@ -414,6 +169,13 @@ ui <- page_navbar(
                 ),
                 uiOutput("filter_method_ui"),
 
+                ## blood-volume correction (dataframe)
+                checkboxInput(
+                    "bv_correct_logical",
+                    "Correct Blood Volume"
+                ),
+                uiOutput("bv_ui"),
+
                 ## shift data (dataframe)
                 checkboxInput("shift_logical", "Shift Data"),
                 uiOutput("shift_ui"),
@@ -433,7 +195,7 @@ ui <- page_navbar(
 
                 checkboxInput(
                     "keep_all",
-                    "Keep all Columns in File Export",
+                    "Keep all Columns in Export",
                     value = TRUE
                 ),
 
@@ -473,7 +235,8 @@ ui <- page_navbar(
 
         Available from: https://github.com/jemarnold/mnirs
     
-        For more information see the *{mnirs}* package documentation: https://jemarnold.github.io/mnirs/index.html
+        For more information see the *{mnirs}* package documentation: 
+        https://jemarnold.github.io/mnirs/index.html
         
         Author: Jem Arnold'
                 )
@@ -483,86 +246,7 @@ ui <- page_navbar(
                 fill = FALSE,
                 card_header("Instructions"),
                 markdown(
-                    '
-        mNIRS files can be imported and processed using standardised methods,
-        and displayed in a plot and data table. The plot is interactive and can 
-        be zoomed in and out (changing settings will reset plot zoom).
-        Processed data can be downloaded for further analysis.
-
-        #### Upload File:
-        Upload an `.xls(x)` or `.csv` file containing mNIRS data exported from
-        many common wearable devices. Files exported from common NIRS devices 
-        should be automatically recognised, with the first detected 
-        `nirs_channel` returned.
-
-        #### mNIRS Channel Names:
-        Specify the column name(s) containing mNIRS data. Multiple channels
-        can be specified using comma-separated `new_name = file_column_name`
-        pairs.
-
-        Example: `smo2_left = SmO2, smo2_right = SmO2(2)`
-
-        #### Time/Sample Channel Name:
-        Specify the column containing time or sample values.
-
-        Example: `time = Timestamp (seconds)`
-
-        #### Lap/Event Channel Name (optional):
-        Optionally specify column with lap/event markers.
-
-        #### Zero Start Time:
-        Reset `time_channel` to start at zero.
-
-        #### Sample Rate:
-        Specify the exported data sample rate in Hz. This will be automatically
-        estimated from the time channel and can be manually overridden.
-
-        #### Resample Rate:
-        Data can be resampled to a higher or lower sample rate. Also used to
-        correct `time_channel` values for data with irregular or duplicated
-        samples.
-
-        #### Trim Head/Tail Timespan:
-        Remove samples from the beginning or end of the recording, specified in
-        units of `time_channel` (i.e., seconds).
-
-        #### Replace Invalid Values:
-        Replace specific fixed values (e.g., `c(0, 100)`) from `nirs_channels`.
-
-        #### Replace Outliers:
-        Remove local outliers using a moving window Hampel filter approach.
-
-        #### Replace Missing Values:
-        Linearly interpolate across missing values in `nirs_channel`.
-
-        #### Digital Filter Method:
-        Apply smoothing filters to improve signal-to-noise ratio. Methods
-        include a cubic *"smoothing-spline"*, a low-pass *"Butterworth"*
-        filter, or a simple *"moving average"*. Additional parameters for
-        each filter method can be specified.
-
-        #### Shift Data:
-        Move `nirs_channels` values up or down to a new specified reference
-        value, based on the *"first"*, *"minimum"*, or *"maximum"* data points.
-        Multiple channels can be shifted together (*"Ensemble"*) or 
-        independently (*"Distinct"*).
-
-        #### Rescale Data:
-        Normalise `nirs_channels` to a new specified dynamic range. Multiple
-        channels can be shifted together (*"Ensemble"*) or independently
-        (*"Distinct"*).
-
-        #### Place Event Markers:
-        Manually add event markers at specified time points. Will add an
-        `event_channel` to the data table if not already specified, otherwise
-        will add character event labels or numeric time values to an existing `event_channel` in the appropriate format.
-
-        #### Keep All Columns:
-        Either keep all columns in the file data table (the default), or keep 
-        only the channels specified.
-
-        #### Download Data:
-        Export processed data as an Excel file for further analysis.'
+                    paste(readLines("instructions.md"), collapse = "\n")
                 )
             )
         )
@@ -636,6 +320,84 @@ server <- function(input, output, session) {
         ))
     })
 
+    ## scalar bindCache keys ======================================
+    ## each pipeline stage keys on the upload identity plus all
+    ## upstream inputs, so caches never hash full data frames
+    raw_key <- reactive({
+        req(raw_data())
+        list(
+            ## datapath is unique per upload, so re-uploading an
+            ## edited file with the same name invalidates caches
+            input$upload_file$datapath,
+            input$nirs_channels,
+            input$time_channel,
+            input$event_channel,
+            input$sample_rate
+        )
+    })
+
+    resample_key <- reactive(c(
+        raw_key(),
+        list(
+            input$head_trim,
+            input$tail_trim,
+            input$resample_rate,
+            input$zero_time_logical
+        )
+    ))
+
+    replace_key <- reactive(c(
+        resample_key(),
+        list(
+            input$invalid_values,
+            input$replace_outliers,
+            input$outlier_span,
+            input$replace_missing
+        )
+    ))
+
+    filter_key <- reactive(c(
+        replace_key(),
+        list(
+            input$filter_method,
+            butter_type(),
+            input$order,
+            input$fc,
+            input$filter_span
+        )
+    ))
+
+    correct_key <- reactive(c(
+        filter_key(),
+        list(
+            input$bv_correct_logical,
+            input$bv_oxy,
+            input$bv_deoxy,
+            input$bv_total
+        )
+    ))
+
+    shift_key <- reactive(c(
+        correct_key(),
+        list(
+            input$shift_logical,
+            input$shift_to,
+            input$shift_which_cols,
+            input$shift_position,
+            input$shift_span
+        )
+    ))
+
+    rescale_key <- reactive(c(
+        shift_key(),
+        list(
+            input$rescale_logical,
+            input$rescale_min,
+            input$rescale_max,
+            input$rescale_which_cols
+        )
+    ))
+
     ## run read_mnirs with current inputs; caller controls triggers.
     do_read <- function() {
         isolate({
@@ -649,7 +411,7 @@ server <- function(input, output, session) {
                     event_channel = split_named_vec(input$event_channel),
                     sample_rate = blank_to_null(input$sample_rate),
                     add_timestamp = FALSE,
-                    keep_all = input$keep_all
+                    keep_all = TRUE
                 ),
                 error = \(e) {
                     raw_data_val(NULL)
@@ -657,7 +419,7 @@ server <- function(input, output, session) {
                     return(NULL)
                 }
             )
-            
+
             req(out)
             raw_data_err(NULL)
             raw_data_val(out)
@@ -706,8 +468,7 @@ server <- function(input, output, session) {
             input$nirs_channels,
             input$time_channel,
             input$event_channel,
-            input$sample_rate,
-            input$keep_all
+            input$sample_rate
         ),
         {
             req(input$upload_file)
@@ -732,7 +493,8 @@ server <- function(input, output, session) {
                     "butter_type",
                     "Butterworth Filter Type",
                     choices = c(
-                        "Low-Pass", "High-Pass"#, "Stop-Band", "Pass-Band"
+                        "Low-Pass",
+                        "High-Pass" #, "Stop-Band", "Pass-Band"
                     )
                 ),
                 numericInput(
@@ -767,6 +529,20 @@ server <- function(input, output, session) {
         )
     })
 
+    ## dynamic UI: correct_blood_volume ==============================
+    output$bv_ui <- renderUI({
+        req(input$bv_correct_logical)
+
+        ## channel choices from detected nirs_channels; "" = unspecified
+        choices <- c("(none)" = "", metadata()$nirs_channels)
+
+        tagList(
+            selectInput("bv_oxy", "Oxy Channel (O2Hb)", choices = choices),
+            selectInput("bv_deoxy", "Deoxy Channel (HHb)", choices = choices),
+            selectInput("bv_total", "Total Channel (THb)", choices = choices),
+        )
+    })
+
     butter_type <- reactive({
         req(input$filter_method)
 
@@ -779,6 +555,20 @@ server <- function(input, output, session) {
             "High-Pass" = "high",
             "Stop-Band" = "stop",
             "Pass-Band" = "pass"
+        )
+    })
+
+    ## dynamic UI: outlier span ======================================
+    output$outlier_ui <- renderUI({
+        req(input$replace_outliers)
+
+        numericInput(
+            "outlier_span",
+            label = "Outlier Detection Span",
+            value = 15,
+            min = 1,
+            step = 1,
+            updateOn = "blur"
         )
     })
 
@@ -841,13 +631,18 @@ server <- function(input, output, session) {
         }
     })
 
-    ## untick show_raw when shift or rescale ticked
+    ## untick show_raw when a value-altering transform is ticked
     observeEvent(
-        list(input$shift_logical, input$rescale_logical),
+        list(
+            input$shift_logical,
+            input$rescale_logical,
+            input$bv_correct_logical
+        ),
         {
             if (
                 isTRUE(input$shift_logical) ||
-                    isTRUE(input$rescale_logical)
+                    isTRUE(input$rescale_logical) ||
+                    isTRUE(input$bv_correct_logical)
             ) {
                 updateCheckboxInput(session, "show_raw", value = FALSE)
             }
@@ -891,11 +686,7 @@ server <- function(input, output, session) {
 
         return(out)
     }) |>
-        bindCache(
-            trimmed_data(),
-            input$resample_rate,
-            input$zero_time_logical
-        )
+        bindCache(resample_key())
 
     ## reactive replaced data ======================================
     replaced_data <- reactive({
@@ -904,7 +695,7 @@ server <- function(input, output, session) {
         invalid_values <- string_to_numeric(input$invalid_values)
         if (input$replace_outliers) {
             outlier_cutoff <- 3
-            outlier_span <- 15 ## TODO custom outlier span?
+            outlier_span <- input$outlier_span %||% 15
         } else {
             outlier_cutoff <- NULL
             outlier_span <- NULL
@@ -922,12 +713,7 @@ server <- function(input, output, session) {
                 method = interp_method %||% "none"
             )
     }) |>
-        bindCache(
-            resampled_data(),
-            input$invalid_values,
-            input$replace_outliers,
-            input$replace_missing
-        )
+        bindCache(replace_key())
 
     ## reactive filtered data ======================================
     filtered_data <- reactive({
@@ -952,46 +738,58 @@ server <- function(input, output, session) {
             na.rm = TRUE
         )
     }) |>
-        bindCache(
-            replaced_data(),
-            butter_type(),
-            input$filter_method,
-            input$order,
-            input$fc,
-            input$filter_span
+        bindCache(filter_key())
+
+    ## reactive corrected_data (blood volume) ==========================
+    corrected_data <- reactive({
+        req(filtered_data())
+
+        if (!isTRUE(input$bv_correct_logical)) {
+            return(filtered_data())
+        }
+
+        channels <- list(
+            oxy_channel = blank_to_null(input$bv_oxy),
+            deoxy_channel = blank_to_null(input$bv_deoxy),
+            total_channel = blank_to_null(input$bv_total)
         )
+
+        ## need >= 2 of oxy/deoxy/total; third is derived
+        validate(need(
+            sum(lengths(channels)) >= 2L,
+            "Select at least 2 of oxy / deoxy / total channels."
+        ))
+
+        tryCatch(
+            do.call(
+                mnirs::correct_blood_volume,
+                c(list(filtered_data()), channels)
+            ),
+            error = \(e) validate(need(FALSE, clean_cli_message(e)))
+        )
+    }) |>
+        bindCache(correct_key())
 
     ## reactive shifted_data ======================================
     shifted_data <- reactive({
-        req(filtered_data())
+        req(corrected_data())
 
         if (!input$shift_logical) {
-            return(filtered_data())
+            return(corrected_data())
         }
 
         req(input$shift_which_cols, input$shift_position)
 
-        channels <- group_channels(
-            metadata()$nirs_channels,
-            input$shift_which_cols
-        )
-
         mnirs::shift_mnirs(
-            filtered_data(),
-            nirs_channels = channels,
+            corrected_data(),
+            nirs_channels = metadata()$nirs_channels,
+            group_channels = tolower(input$shift_which_cols),
             to = blank_to_null(input$shift_to),
             span = blank_to_null(input$shift_span),
             position = tolower(sub("imum", "", input$shift_position))
         )
     }) |>
-        bindCache(
-            filtered_data(),
-            input$shift_logical,
-            input$shift_to,
-            input$shift_which_cols,
-            input$shift_position,
-            input$shift_span
-        )
+        bindCache(shift_key())
 
     ## reactive rescaled_data ======================================
     rescaled_data <- reactive({
@@ -1003,27 +801,17 @@ server <- function(input, output, session) {
 
         req(input$rescale_which_cols)
 
-        channels <- group_channels(
-            metadata()$nirs_channels,
-            input$rescale_which_cols
-        )
-
         mnirs::rescale_mnirs(
             shifted_data(),
-            nirs_channels = channels,
+            nirs_channels = metadata()$nirs_channels,
+            group_channels = tolower(input$rescale_which_cols),
             range = c(
                 blank_to_null(input$rescale_min),
                 blank_to_null(input$rescale_max)
             )
         )
     }) |>
-        bindCache(
-            shifted_data(),
-            input$rescale_logical,
-            input$rescale_min,
-            input$rescale_max,
-            input$rescale_which_cols
-        )
+        bindCache(rescale_key())
 
     ## reactive events data ==============================================
     nirs_data <- reactive({
@@ -1040,7 +828,7 @@ server <- function(input, output, session) {
             match_idx <- vapply(manual_events, \(.event) {
                 which.min(abs(time_vec - .event))
             }, integer(1L))
-            time_vals <- time_vec[match_idx]
+            time_vals <- signif(time_vec[match_idx], 3)
 
             if (is.null(event_channel)) {
                 nirs_data$event <- NA_character_
@@ -1049,7 +837,8 @@ server <- function(input, output, session) {
                 nirs_data[[event_channel]][match_idx] <- time_vals
             } else {
                 nirs_data[[event_channel]][match_idx] <- paste0(
-                    "event_", time_vals
+                    "event_",
+                    time_vals
                 )
             }
         }
@@ -1057,29 +846,46 @@ server <- function(input, output, session) {
         return(nirs_data)
     })
 
+    ## reactive export data ==============================================
+    ## data is read with keep_all = TRUE so extra columns survive the
+    ## pipeline; this drops unrecognised columns from the table and
+    ## download when the user unticks keep_all
+    export_data <- reactive({
+        data <- nirs_data()
+
+        if (isTRUE(input$keep_all)) {
+            return(data)
+        }
+
+        keep <- c(
+            metadata()$time_channel,
+            metadata()$nirs_channels,
+            metadata()$event_channel,
+            "event"
+        )
+        return(data[intersect(names(data), keep)])
+    })
+
     ## Output: Data table ==========================================
     output$nirs_table <- renderDT({
-        req(nirs_data())
+        data <- export_data()
+        req(data)
 
         time_channel <- metadata()$time_channel
 
-        ## format numeric columns for display
-        display_data <- nirs_data()
-        display_data[] <- lapply(names(display_data), \(.name) {
-            col <- display_data[[.name]]
-            if (.name == time_channel) {
-                mnirs:::signif_trailing(col, 3L)
-            } else if (rlang::is_integerish(col)) {
-                as.integer(col)
-            } else if (is.numeric(col)) {
-                mnirs:::signif_trailing(col, 4L, "signif")
-            } else {
-                col
-            }
-        })
+        ## format numerics client-side; keeps columns numeric so
+        ## table sorting works and avoids re-formatting in R on
+        ## every invalidation
+        num_cols <- names(data)[vapply(data, is.numeric, logical(1L))]
+        int_cols <- num_cols[vapply(
+            data[num_cols],
+            rlang::is_integerish,
+            logical(1L)
+        )]
+        sig_cols <- setdiff(num_cols, c(int_cols, time_channel))
 
-        datatable(
-            display_data,
+        dt <- datatable(
+            data,
             rownames = FALSE,
             options = list(
                 dom = 'frtip',
@@ -1088,47 +894,126 @@ server <- function(input, output, session) {
                 searchHighlight = FALSE
             )
         )
+        dt <- if (time_channel %in% setdiff(num_cols, int_cols)) {
+            formatSignif(dt, time_channel, digits = 3)
+        } else {
+            dt
+        }
+        if (length(sig_cols)) formatSignif(dt, sig_cols, digits = 4) else dt
     })
 
     ## Output: Plot ==========================================
+    ## plot uses rescaled_data(): manual event markers only touch the
+    ## event channel (not plotted), so the table/download pipeline
+    ## invalidating doesn't force a plot rebuild. cosmetic inputs
+    ## (colour mode, event markers, show-raw) update in place via
+    ## plotlyProxy observers below; they are isolated here so full
+    ## rebuilds still respect their current state.
     output$plot <- plotly::renderPlotly({
-        req(nirs_data())
+        req(rescaled_data())
 
-        mode <- input$color_mode
-        if (identical(mode, "dark")) {
-            ink <- "#fff"
-            paper <- "#212529"
+        dark <- identical(isolate(input$color_mode), "dark")
+        ink <- if (dark) "#fff" else "#373a3c"
+        paper <- if (dark) "#212529" else "#fff"
+
+        manual_events <- string_to_numeric(isolate(input$manual_events))
+        raw_data <- if (input$filter_method != "None") {
+            replaced_data()
         } else {
-            ink <- "#373a3c"
-            paper <- "#fff"
+            NULL
         }
 
-        manual_events <- string_to_numeric(input$manual_events)
-
-        show_raw <- isTRUE(input$show_raw) && input$filter_method != "None"
-        raw_data <- if (show_raw) replaced_data() else NULL
-
         plotly_mnirs(
-            nirs_data(),
+            rescaled_data(),
             time_labels = input$time_labels,
             ink = ink,
             paper = paper,
             manual_events = manual_events,
-            raw_data = raw_data
+            raw_data = raw_data,
+            show_raw = isTRUE(isolate(input$show_raw))
         )
     }) |>
         bindEvent(
-            nirs_data(),
-            input$manual_events,
-            input$time_labels,
-            input$color_mode,
-            input$show_raw
+            rescaled_data(),
+            input$time_labels
         )
+
+    ## toggle raw trace visibility in place; raw traces occupy the
+    ## first n plot slots when a filter is active
+    observeEvent(
+        input$show_raw,
+        {
+            req(rescaled_data(), input$filter_method != "None")
+
+            n <- length(metadata()$nirs_channels)
+            plotly::plotlyProxy("plot", session) |>
+                plotly::plotlyProxyInvoke(
+                    "restyle",
+                    list(visible = isTRUE(input$show_raw)),
+                    as.list(seq_len(n) - 1L)
+                )
+        },
+        ignoreInit = TRUE
+    )
+
+    ## redraw event marker shapes without a full plot rebuild
+    observeEvent(
+        input$manual_events,
+        {
+            req(rescaled_data())
+
+            ink <- if (identical(input$color_mode, "dark")) {
+                "#fff"
+            } else {
+                "#373a3c"
+            }
+            shapes <- event_shapes(
+                string_to_numeric(input$manual_events),
+                ink = ink,
+                time_labels = input$time_labels
+            )
+            plotly::plotlyProxy("plot", session) |>
+                plotly::plotlyProxyInvoke("relayout", list(shapes = shapes))
+        },
+        ignoreInit = TRUE
+    )
+
+    ## dark/light mode: recolour layout and event shapes in place
+    observeEvent(
+        input$color_mode,
+        {
+            req(rescaled_data())
+
+            dark <- identical(input$color_mode, "dark")
+            ink <- if (dark) "#fff" else "#373a3c"
+            paper <- if (dark) "#212529" else "#fff"
+            shapes <- event_shapes(
+                string_to_numeric(input$manual_events),
+                ink = ink,
+                time_labels = input$time_labels
+            )
+            plotly::plotlyProxy("plot", session) |>
+                plotly::plotlyProxyInvoke(
+                    "relayout",
+                    list(
+                        paper_bgcolor = paper,
+                        plot_bgcolor = paper,
+                        "font.color" = ink,
+                        "xaxis.color" = ink,
+                        "xaxis.linecolor" = ink,
+                        "yaxis.color" = ink,
+                        "yaxis.linecolor" = ink,
+                        shapes = shapes
+                    )
+                )
+        },
+        ignoreInit = TRUE
+    )
 
     ## Download handler =============================================
     output$download_data <- downloadHandler(
         filename = \() paste0("mnirs_processed_", Sys.Date(), ".xlsx"),
-        content = \(file) writexl::write_xlsx(nirs_data(), path = file)
+        content = \(file) writexl::write_xlsx(export_data(), path = file)
     )
 }
 
