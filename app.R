@@ -94,6 +94,7 @@ ui <- page_navbar(
                     updateOn = "blur"
                 ),
 
+                hr(),
                 ## reset start time to zero
                 checkboxInput("zero_time_logical", "Zero Start Time"),
 
@@ -119,6 +120,7 @@ ui <- page_navbar(
                     updateOn = "blur"
                 ),
 
+                hr(),
                 ## remove head/tail timespan
                 numericInput(
                     "head_trim",
@@ -137,6 +139,7 @@ ui <- page_navbar(
                     updateOn = "blur"
                 ),
 
+                hr(),
                 ## replace invalid values (column wise)
                 textInput(
                     "invalid_values",
@@ -152,6 +155,7 @@ ui <- page_navbar(
                 ## replace missing values (column wise)
                 checkboxInput("replace_missing", "Replace Missing Values"),
 
+                hr(),
                 ## filter/smooth data (column wise)
                 selectInput(
                     "filter_method",
@@ -169,6 +173,7 @@ ui <- page_navbar(
                 ),
                 uiOutput("filter_method_ui"),
 
+                hr(),
                 ## blood-volume correction (dataframe)
                 checkboxInput(
                     "bv_correct_logical",
@@ -184,6 +189,7 @@ ui <- page_navbar(
                 checkboxInput("rescale_logical", "Rescale Data"),
                 uiOutput("rescale_ui"),
 
+                hr(),
                 ## place manual event lines in data
                 textInput(
                     "manual_events",
@@ -223,75 +229,86 @@ ui <- page_navbar(
         layout_sidebar(
             sidebar = sidebar(
                 open = TRUE,
-                radioButtons(
-                    "group_intervals",
-                    label = "Group Intervals",
-                    choices = c("Distinct", "Ensemble")
-                ),
 
-                ## interval boundaries: any combination of methods accepted
-                tags$b("Interval Starts (accept multiple)"),
+                ## interval boundaries: any combination of methods accepted,
+                ## grouped by method with start & end paired together
+                tags$b("Interval Boundaries (accept multiple)"),
+
+                tags$b("By Time"),
                 textInput(
                     "start_time",
-                    label = "By Time",
+                    label = "Start",
                     placeholder = "60, 120, ...",
                     updateOn = "blur"
                 ),
                 textInput(
-                    "start_label",
-                    label = "By Label (regex)",
-                    updateOn = "blur"
-                ),
-                textInput(
-                    "start_lap",
-                    label = "By Lap",
-                    updateOn = "blur"
-                ),
-                textInput(
-                    "start_sample",
-                    label = "By Sample",
+                    "end_time",
+                    label = "End",
                     updateOn = "blur"
                 ),
 
-                tags$b("Interval Ends (optional)"),
+                hr(),
+                tags$b("By Label"),
                 textInput(
-                    "end_time",
-                    label = "By Time",
+                    "start_label",
+                    label = "Start",
                     updateOn = "blur"
                 ),
                 textInput(
                     "end_label",
-                    label = "By Label (regex)",
+                    label = "End",
                     updateOn = "blur"
                 ),
-                textInput(
-                    "end_lap",
-                    label = "By Lap",
-                    updateOn = "blur"
-                ),
-                textInput(
-                    "end_sample",
-                    label = "By Sample",
-                    updateOn = "blur"
-                ),
-
                 checkboxInput(
                     "label_fixed",
                     "Fixed (literal) Label Matching"
                 ),
 
-                ## global span applied to all intervals
+                hr(),
+                tags$b("By Lap"),
+                textInput(
+                    "start_lap",
+                    label = "Start",
+                    updateOn = "blur"
+                ),
+                textInput(
+                    "end_lap",
+                    label = "End",
+                    updateOn = "blur"
+                ),
+
+                hr(),
+                tags$b("By Sample"),
+                textInput(
+                    "start_sample",
+                    label = "Start",
+                    updateOn = "blur"
+                ),
+                textInput(
+                    "end_sample",
+                    label = "End",
+                    updateOn = "blur"
+                ),
+
+                hr(),
+                ## global span applied to all intervals. blank reads as 0
                 numericInput(
                     "span_before",
                     label = "Span Before Start",
-                    value = -60,
+                    value = NA,
                     updateOn = "blur"
                 ),
                 numericInput(
                     "span_after",
                     label = "Span After End",
-                    value = 60,
+                    value = NA,
                     updateOn = "blur"
+                ),
+
+                radioButtons(
+                    "group_intervals",
+                    label = "Group Intervals",
+                    choices = c("Distinct", "Ensemble")
                 ),
 
                 checkboxInput("extract_zero_time", "Zero Interval Time"),
@@ -1214,9 +1231,10 @@ server <- function(input, output, session) {
                 ),
                 start = if (!is.null(bounds$starts)) mnirs::by_time(bounds$starts),
                 end = if (!is.null(bounds$ends)) mnirs::by_time(bounds$ends),
+                ## blank span inputs read as no offset
                 span = c(
-                    input$span_before %||% -60,
-                    input$span_after %||% 60
+                    blank_to_null(input$span_before) %||% 0,
+                    blank_to_null(input$span_after) %||% 0
                 ),
                 zero_time = isTRUE(input$extract_zero_time)
             ),
@@ -1232,7 +1250,8 @@ server <- function(input, output, session) {
         req(nirs_data())
         bounds <- boundary_times()
 
-        p <- plot(nirs_data(), time_labels = isTRUE(input$time_labels))
+        p <- plot(nirs_data(), time_labels = isTRUE(input$time_labels)) + 
+            theme_mnirs(base_size = 18)
         if (!is.null(bounds$starts)) {
             p <- p + geom_vline(
                 xintercept = bounds$starts,
@@ -1251,7 +1270,8 @@ server <- function(input, output, session) {
     ## Output: interval plot ========================================
     ## static ggplot facetted by interval; thematic_shiny() themes it
     output$interval_plot <- renderPlot({
-        plot(interval_list(), time_labels = isTRUE(input$time_labels))
+        plot(interval_list(), time_labels = isTRUE(input$time_labels)) + 
+            theme_mnirs(base_size = 18, border = "full")
     })
 
     ## Download handler =============================================
