@@ -64,6 +64,44 @@ trim_tail <- function(data, time_channel, trim) {
     data[data[[time_channel]] < cutoff, ]
 }
 
+## Build a single-method extract_intervals boundary spec from comma-separated text
+parse_boundary <- function(method, x, fixed = FALSE) {
+    x <- blank_to_null(trimws(x %||% ""))
+    if (is.null(x)) {
+        return(NULL)
+    }
+
+    out <- switch(
+        method,
+        time = mnirs::by_time(string_to_numeric(x)),
+        sample = mnirs::by_sample(string_to_numeric(x)),
+        lap = mnirs::by_lap(string_to_numeric(x)),
+        label = mnirs::by_label(trimws(strsplit(x, ",")[[1L]]), fixed = fixed)
+    )
+    return(out)
+}
+
+## Resolve mixed-method boundary specs to sorted times via span-0 extraction
+## (extract_intervals accepts one by_* type per call, so each method is
+## resolved separately and combined by time)
+resolve_boundary_times <- function(data, specs, boundary = c("start", "end")) {
+    boundary <- match.arg(boundary)
+    specs <- Filter(Negate(is.null), specs)
+    if (length(specs) == 0L) {
+        return(NULL)
+    }
+
+    times <- lapply(specs, \(.spec) {
+        args <- list(
+            data, span = 0, group_intervals = "distinct", verbose = FALSE
+        )
+        args[[boundary]] <- .spec
+        df_list <- do.call(mnirs::extract_intervals, args)
+        vapply(df_list, \(.df) attr(.df, "interval_times")[[1L]], numeric(1L))
+    })
+    return(sort(unlist(times, use.names = FALSE)))
+}
+
 ## Safe wrapper for filter_mnirs with error handling
 try_filter <- function(data, nirs_channels, time_channel, ...) {
     tryCatch(

@@ -217,6 +217,100 @@ ui <- page_navbar(
         )
     ),
 
+    ## Extract Intervals Tab ======================================
+    nav_panel(
+        "Extract Intervals",
+        layout_sidebar(
+            sidebar = sidebar(
+                open = TRUE,
+                radioButtons(
+                    "group_intervals",
+                    label = "Group Intervals",
+                    choices = c("Distinct", "Ensemble")
+                ),
+
+                ## interval boundaries: any combination of methods accepted
+                tags$b("Interval Starts (accept multiple)"),
+                textInput(
+                    "start_time",
+                    label = "By Time",
+                    placeholder = "60, 120, ...",
+                    updateOn = "blur"
+                ),
+                textInput(
+                    "start_label",
+                    label = "By Label (regex)",
+                    updateOn = "blur"
+                ),
+                textInput(
+                    "start_lap",
+                    label = "By Lap",
+                    updateOn = "blur"
+                ),
+                textInput(
+                    "start_sample",
+                    label = "By Sample",
+                    updateOn = "blur"
+                ),
+
+                tags$b("Interval Ends (optional)"),
+                textInput(
+                    "end_time",
+                    label = "By Time",
+                    updateOn = "blur"
+                ),
+                textInput(
+                    "end_label",
+                    label = "By Label (regex)",
+                    updateOn = "blur"
+                ),
+                textInput(
+                    "end_lap",
+                    label = "By Lap",
+                    updateOn = "blur"
+                ),
+                textInput(
+                    "end_sample",
+                    label = "By Sample",
+                    updateOn = "blur"
+                ),
+
+                checkboxInput(
+                    "label_fixed",
+                    "Fixed (literal) Label Matching"
+                ),
+
+                ## global span applied to all intervals
+                numericInput(
+                    "span_before",
+                    label = "Span Before Start",
+                    value = -60,
+                    updateOn = "blur"
+                ),
+                numericInput(
+                    "span_after",
+                    label = "Span After End",
+                    value = 60,
+                    updateOn = "blur"
+                ),
+
+                checkboxInput("extract_zero_time", "Zero Interval Time"),
+
+                downloadButton(
+                    "download_intervals",
+                    "Download Data",
+                    class = "btn-primary"
+                ),
+            ),
+
+            card(
+                fill = FALSE,
+                card_header("Extracted Intervals"),
+                plotOutput("interval_plot", height = "600px")
+            )
+        )
+    ),
+
     ## Instructions Tab ===========================================
     nav_panel(
         "Instructions",
@@ -835,16 +929,25 @@ server <- function(input, output, session) {
 
         ## add manual event markers using nearest-match
         if (!is.null(manual_events)) {
-            match_idx <- vapply(manual_events, \(.event) {
-                which.min(abs(time_vec - .event))
-            }, integer(1L))
+            match_idx <- vapply(
+                manual_events,
+                \(.event) {
+                    which.min(abs(time_vec - .event))
+                },
+                integer(1L)
+            )
             ## keep the matched sample time; round only to display
             ## precision so labels carry no floating-point tail
             digits <- time_digits(time_vec)
             time_vals <- round(time_vec[match_idx], digits)
             event_labels <- paste0(
                 "event_",
-                vapply(time_vals, mnirs:::signif_trailing, character(1L), digits)
+                vapply(
+                    time_vals,
+                    mnirs:::signif_trailing,
+                    character(1L),
+                    digits
+                )
             )
 
             if (is.null(event_channel)) {
@@ -1034,6 +1137,85 @@ server <- function(input, output, session) {
     output$download_data <- downloadHandler(
         filename = \() paste0("mnirs_processed_", Sys.Date(), ".xlsx"),
         content = \(file) writexl::write_xlsx(export_data(), path = file)
+    )
+
+    ## Extract Intervals tab ========================================
+    ## uses nirs_data() so manual event markers are targets for
+    ## by_label/by_lap. mixed by_* methods are resolved to times
+    ## app-side because extract_intervals() accepts one type per call
+    interval_list <- reactive({
+        req(nirs_data())
+        ## req outside tryCatch so blank inputs stay silent
+        req(any(nzchar(trimws(c(
+            input$start_time,
+            input$start_label,
+            input$start_lap,
+            input$start_sample,
+            input$end_time,
+            input$end_label,
+            input$end_lap,
+            input$end_sample
+        )))))
+
+        tryCatch(
+            {
+                starts <- resolve_boundary_times(
+                    nirs_data(),
+                    list(
+                        parse_boundary("time", input$start_time),
+                        parse_boundary(
+                            "label",
+                            input$start_label,
+                            fixed = isTRUE(input$label_fixed)
+                        ),
+                        parse_boundary("lap", input$start_lap),
+                        parse_boundary("sample", input$start_sample)
+                    ),
+                    boundary = "start"
+                )
+                ends <- resolve_boundary_times(
+                    nirs_data(),
+                    list(
+                        parse_boundary("time", input$end_time),
+                        parse_boundary(
+                            "label",
+                            input$end_label,
+                            fixed = isTRUE(input$label_fixed)
+                        ),
+                        parse_boundary("lap", input$end_lap),
+                        parse_boundary("sample", input$end_sample)
+                    ),
+                    boundary = "end"
+                )
+
+                mnirs::extract_intervals(
+                    nirs_data(),
+                    group_intervals = tolower(
+                        input$group_intervals %||% "Distinct"
+                    ),
+                    start = if (!is.null(starts)) mnirs::by_time(starts),
+                    end = if (!is.null(ends)) mnirs::by_time(ends),
+                    span = c(
+                        input$span_before %||% -60,
+                        input$span_after %||% 60
+                    ),
+                    zero_time = isTRUE(input$extract_zero_time)
+                )
+            },
+            error = \(e) validate(need(FALSE, clean_cli_message(e)))
+        )
+    })
+
+    ## Output: interval plot ========================================
+    ## static ggplot facetted by interval; thematic_shiny() themes it
+    output$interval_plot <- renderPlot({
+        plot(interval_list(), time_labels = isTRUE(input$time_labels))
+    })
+
+    ## Download handler =============================================
+    output$download_intervals <- downloadHandler(
+        filename = \() paste0("mnirs_intervals_", Sys.Date(), ".xlsx"),
+        content = \(file) writexl::write_xlsx(interval_list(), path = file)
     )
 }
 
