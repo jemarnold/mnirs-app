@@ -81,9 +81,8 @@ parse_boundary <- function(method, x, fixed = FALSE) {
     return(out)
 }
 
-## Resolve mixed-method boundary specs to sorted times via span-0 extraction
-## (extract_intervals accepts one by_* type per call, so each method is
-## resolved separately and combined by time)
+## Resolve mixed-method boundary specs to sorted times via a single
+## span-0 extraction (extract_intervals accepts a list of by_* specs)
 resolve_boundary_times <- function(data, specs, boundary = c("start", "end")) {
     boundary <- match.arg(boundary)
     specs <- Filter(Negate(is.null), specs)
@@ -91,15 +90,11 @@ resolve_boundary_times <- function(data, specs, boundary = c("start", "end")) {
         return(NULL)
     }
 
-    times <- lapply(specs, \(.spec) {
-        args <- list(
-            data, span = 0, group_intervals = "distinct", verbose = FALSE
-        )
-        args[[boundary]] <- .spec
-        df_list <- do.call(mnirs::extract_intervals, args)
-        vapply(df_list, \(.df) attr(.df, "interval_times")[[1L]], numeric(1L))
-    })
-    return(sort(unlist(times, use.names = FALSE)))
+    args <- list(data, span = 0, group_intervals = "distinct", verbose = FALSE)
+    args[[boundary]] <- specs
+    df_list <- do.call(mnirs::extract_intervals, args)
+    times <- vapply(df_list, \(.df) attr(.df, "interval_times")[[1L]], numeric(1L))
+    return(sort(times))
 }
 
 ## Safe wrapper for filter_mnirs with error handling

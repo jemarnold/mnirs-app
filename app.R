@@ -1164,8 +1164,8 @@ server <- function(input, output, session) {
 
     ## Extract Intervals tab ========================================
     ## uses nirs_data() so manual event markers are targets for
-    ## by_label/by_lap. mixed by_* methods are resolved to times
-    ## app-side because extract_intervals() accepts one type per call
+    ## by_label/by_lap. mixed by_* methods are resolved to sorted times
+    ## app-side so the boundary plot shares them with extract_intervals()
     ## resolve start/end boundary specs to times once; shared by the
     ## boundary plot and extract_intervals(). blank inputs give NULLs
     boundary_times <- reactive({
