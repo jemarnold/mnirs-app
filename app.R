@@ -305,6 +305,12 @@ ui <- page_navbar(
 
             card(
                 fill = FALSE,
+                card_header("Full Plot with Interval Boundaries"),
+                plotOutput("boundary_plot", height = "300px")
+            ),
+
+            card(
+                fill = FALSE,
                 card_header("Extracted Intervals"),
                 plotOutput("interval_plot", height = "600px")
             )
@@ -1143,19 +1149,10 @@ server <- function(input, output, session) {
     ## uses nirs_data() so manual event markers are targets for
     ## by_label/by_lap. mixed by_* methods are resolved to times
     ## app-side because extract_intervals() accepts one type per call
-    interval_list <- reactive({
+    ## resolve start/end boundary specs to times once; shared by the
+    ## boundary plot and extract_intervals(). blank inputs give NULLs
+    boundary_times <- reactive({
         req(nirs_data())
-        ## req outside tryCatch so blank inputs stay silent
-        req(any(nzchar(trimws(c(
-            input$start_time,
-            input$start_label,
-            input$start_lap,
-            input$start_sample,
-            input$end_time,
-            input$end_label,
-            input$end_lap,
-            input$end_sample
-        )))))
 
         tryCatch(
             {
@@ -1187,23 +1184,68 @@ server <- function(input, output, session) {
                     ),
                     boundary = "end"
                 )
-
-                mnirs::extract_intervals(
-                    nirs_data(),
-                    group_intervals = tolower(
-                        input$group_intervals %||% "Distinct"
-                    ),
-                    start = if (!is.null(starts)) mnirs::by_time(starts),
-                    end = if (!is.null(ends)) mnirs::by_time(ends),
-                    span = c(
-                        input$span_before %||% -60,
-                        input$span_after %||% 60
-                    ),
-                    zero_time = isTRUE(input$extract_zero_time)
-                )
+                list(starts = starts, ends = ends)
             },
             error = \(e) validate(need(FALSE, clean_cli_message(e)))
         )
+    })
+
+    interval_list <- reactive({
+        req(nirs_data())
+        ## req outside tryCatch so blank inputs stay silent
+        req(any(nzchar(trimws(c(
+            input$start_time,
+            input$start_label,
+            input$start_lap,
+            input$start_sample,
+            input$end_time,
+            input$end_label,
+            input$end_lap,
+            input$end_sample
+        )))))
+
+        bounds <- boundary_times()
+
+        tryCatch(
+            mnirs::extract_intervals(
+                nirs_data(),
+                group_intervals = tolower(
+                    input$group_intervals %||% "Distinct"
+                ),
+                start = if (!is.null(bounds$starts)) mnirs::by_time(bounds$starts),
+                end = if (!is.null(bounds$ends)) mnirs::by_time(bounds$ends),
+                span = c(
+                    input$span_before %||% -60,
+                    input$span_after %||% 60
+                ),
+                zero_time = isTRUE(input$extract_zero_time)
+            ),
+            error = \(e) validate(need(FALSE, clean_cli_message(e)))
+        )
+    })
+
+    ## Output: boundary plot ========================================
+    ## full-data plot with resolved interval boundaries. plot.mnirs
+    ## keeps a numeric x scale even with time_labels, so vline
+    ## xintercepts are plain seconds in both modes
+    output$boundary_plot <- renderPlot({
+        req(nirs_data())
+        bounds <- boundary_times()
+
+        p <- plot(nirs_data(), time_labels = isTRUE(input$time_labels))
+        if (!is.null(bounds$starts)) {
+            p <- p + geom_vline(
+                xintercept = bounds$starts,
+                colour = "green4", linetype = "dashed", alpha = 0.7
+            )
+        }
+        if (!is.null(bounds$ends)) {
+            p <- p + geom_vline(
+                xintercept = bounds$ends,
+                colour = "red3", linetype = "dashed", alpha = 0.7
+            )
+        }
+        p
     })
 
     ## Output: interval plot ========================================
