@@ -122,7 +122,17 @@ process_tab <- function() {
 
                 ## replace outliers (column wise)
                 checkboxInput("replace_outliers", "Replace Outliers"),
-                uiOutput("outlier_ui"),
+                conditionalPanel(
+                    condition = "input.replace_outliers",
+                    numericInput(
+                        "outlier_span",
+                        label = "Outlier Detection Span",
+                        value = 15,
+                        min = 1,
+                        step = 1,
+                        updateOn = "blur"
+                    )
+                ),
 
                 ## replace missing values (column wise)
                 checkboxInput("replace_missing", "Replace Missing Values"),
@@ -143,7 +153,42 @@ process_tab <- function() {
                     condition = "input.filter_method != 'None'",
                     checkboxInput("show_raw", "Show Raw Tracings", FALSE)
                 ),
-                uiOutput("filter_method_ui"),
+                conditionalPanel(
+                    condition = "input.filter_method == 'Butterworth'",
+                    selectInput(
+                        "butter_type",
+                        "Butterworth Filter Type",
+                        #, "Stop-Band", "Pass-Band"
+                        choices = c("Low-Pass", "High-Pass")
+                    ),
+                    numericInput(
+                        "order",
+                        label = "Filter Order",
+                        value = 2,
+                        min = 1,
+                        max = 10,
+                        step = 1,
+                        updateOn = "blur"
+                    ),
+                    numericInput(
+                        "fc",
+                        label = "Cutoff Frequency (Hz)",
+                        value = 0.1,
+                        min = 0,
+                        step = 0.05,
+                        updateOn = "blur"
+                    )
+                ),
+                conditionalPanel(
+                    condition = "input.filter_method == 'Moving-Average'",
+                    numericInput(
+                        "filter_span",
+                        "Moving-Average Span",
+                        value = 10,
+                        min = 1,
+                        step = 1
+                    )
+                ),
 
                 hr(),
                 ## blood-volume correction (dataframe)
@@ -155,11 +200,54 @@ process_tab <- function() {
 
                 ## shift data (dataframe)
                 checkboxInput("shift_logical", "Shift Data"),
-                uiOutput("shift_ui"),
+                conditionalPanel(
+                    condition = "input.shift_logical",
+                    numericInput(
+                        "shift_to",
+                        label = "Shift To",
+                        value = 0,
+                        updateOn = "blur"
+                    ),
+                    selectInput(
+                        "shift_position",
+                        label = "Shift Position",
+                        choices = c("Minimum", "Maximum", "First")
+                    ),
+                    numericInput(
+                        "shift_span",
+                        label = "Shift Timespan",
+                        value = 1,
+                        updateOn = "blur"
+                    ),
+                    selectInput(
+                        "shift_which_cols",
+                        label = "Shift Channels",
+                        choices = c("Ensemble", "Distinct")
+                    )
+                ),
 
                 ## rescale (dataframe)
                 checkboxInput("rescale_logical", "Rescale Data"),
-                uiOutput("rescale_ui"),
+                conditionalPanel(
+                    condition = "input.rescale_logical",
+                    numericInput(
+                        "rescale_min",
+                        "Rescale Range Minimum",
+                        value = 0,
+                        updateOn = "blur"
+                    ),
+                    numericInput(
+                        "rescale_max",
+                        label = "Rescale Range Maximum",
+                        value = 100,
+                        updateOn = "blur"
+                    ),
+                    selectInput(
+                        "rescale_which_cols",
+                        label = "Rescale Channels",
+                        choices = c("Ensemble", "Distinct")
+                    )
+                ),
 
                 hr(),
                 ## place manual event lines in data

@@ -52,6 +52,14 @@ blank_to_null <- function(x) {
     return(x)
 }
 
+## plot ink/paper colours for current bslib colour mode
+mode_colours <- function(mode) {
+    if (identical(mode, "dark")) {
+        return(list(ink = "#fff", paper = "#212529"))
+    }
+    return(list(ink = "#373a3c", paper = "#fff"))
+}
+
 ## Conditional data transformation
 apply_if <- function(data, condition, fn, ...) {
     if (condition) return(fn(data, ...)) else return(data)

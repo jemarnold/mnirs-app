@@ -192,54 +192,6 @@ process_server <- function(input, output, session) {
         ignoreInit = TRUE
     )
 
-    ## dynamic UI: filter_mnirs ======================================
-    output$filter_method_ui <- renderUI({
-        req(input$filter_method)
-
-        ## different UI based on selection
-        switch(
-            input$filter_method,
-            "Butterworth" = tagList(
-                selectInput(
-                    "butter_type",
-                    "Butterworth Filter Type",
-                    choices = c(
-                        "Low-Pass",
-                        "High-Pass" #, "Stop-Band", "Pass-Band"
-                    )
-                ),
-                numericInput(
-                    "order",
-                    label = "Filter Order",
-                    value = 2,
-                    min = 1,
-                    max = 10,
-                    step = 1,
-                    updateOn = "blur"
-                ),
-                numericInput(
-                    "fc",
-                    label = "Cutoff Frequency (Hz)",
-                    value = 0.1,
-                    min = 0,
-                    # max = metadata()$sample_rate * 0.5,
-                    step = 0.05,
-                    updateOn = "blur"
-                )
-            ),
-            "Moving-Average" = tagList(
-                numericInput(
-                    "filter_span",
-                    "Moving-Average Span",
-                    value = 10,
-                    min = 1,
-                    step = 1
-                ),
-            ),
-            NULL
-        )
-    })
-
     ## dynamic UI: correct_blood_volume ==============================
     output$bv_ui <- renderUI({
         req(input$bv_correct_logical)
@@ -256,90 +208,12 @@ process_server <- function(input, output, session) {
 
     butter_type <- reactive({
         req(input$filter_method)
-
-        ## pass through default condition
-        butter_type <- input$butter_type %||% "Low-Pass"
-
-        switch(
-            butter_type,
+        c(
             "Low-Pass" = "low",
             "High-Pass" = "high",
             "Stop-Band" = "stop",
             "Pass-Band" = "pass"
-        )
-    })
-
-    ## dynamic UI: outlier span ======================================
-    output$outlier_ui <- renderUI({
-        req(input$replace_outliers)
-
-        numericInput(
-            "outlier_span",
-            label = "Outlier Detection Span",
-            value = 15,
-            min = 1,
-            step = 1,
-            updateOn = "blur"
-        )
-    })
-
-    ## dynamic UI: shift_mnirs ======================================
-    output$shift_ui <- renderUI({
-        req(input$shift_logical)
-
-        if (input$shift_logical) {
-            tagList(
-                numericInput(
-                    "shift_to",
-                    label = "Shift To",
-                    value = 0,
-                    updateOn = "blur"
-                ),
-                selectInput(
-                    "shift_position",
-                    label = "Shift Position",
-                    choices = c("Minimum", "Maximum", "First")
-                ),
-                numericInput(
-                    "shift_span",
-                    label = "Shift Timespan",
-                    value = 1,
-                    updateOn = "blur"
-                ),
-                selectInput(
-                    "shift_which_cols",
-                    label = "Shift Channels",
-                    choices = c("Ensemble", "Distinct")
-                ),
-            )
-        }
-    })
-
-    ## dynamic UI: rescale_mnirs ======================================
-    output$rescale_ui <- renderUI({
-        req(input$rescale_logical)
-
-        if (input$rescale_logical) {
-            tagList(
-                numericInput(
-                    "rescale_min",
-                    "Rescale Range Minimum",
-                    value = 0,
-                    updateOn = "blur"
-                ),
-                numericInput(
-                    "rescale_max",
-                    label = "Rescale Range Maximum",
-                    value = 100,
-                    updateOn = "blur"
-                ),
-                selectInput(
-                    "rescale_which_cols",
-                    label = "Rescale Channels",
-                    choices = c("Ensemble", "Distinct")
-                ),
-            )
-        }
+        )[[input$butter_type %||% "Low-Pass"]]
     })
 
     ## untick show_raw when a value-altering transform is ticked
@@ -350,11 +224,10 @@ process_server <- function(input, output, session) {
             input$bv_correct_logical
         ),
         {
-            if (
-                isTRUE(input$shift_logical) ||
-                    isTRUE(input$rescale_logical) ||
-                    isTRUE(input$bv_correct_logical)
-            ) {
+            ticked <- isTRUE(input$shift_logical) ||
+                isTRUE(input$rescale_logical) ||
+                isTRUE(input$bv_correct_logical)
+            if (ticked) {
                 updateCheckboxInput(session, "show_raw", value = FALSE)
             }
         },
@@ -652,9 +525,7 @@ process_server <- function(input, output, session) {
     output$plot <- plotly::renderPlotly({
         req(rescaled_data())
 
-        dark <- identical(isolate(input$color_mode), "dark")
-        ink <- if (dark) "#fff" else "#373a3c"
-        paper <- if (dark) "#212529" else "#fff"
+        cols <- mode_colours(isolate(input$color_mode))
 
         manual_events <- string_to_numeric(isolate(input$manual_events))
         raw_data <- if (input$filter_method != "None") {
@@ -666,8 +537,8 @@ process_server <- function(input, output, session) {
         plotly_mnirs(
             rescaled_data(),
             time_labels = input$time_labels,
-            ink = ink,
-            paper = paper,
+            ink = cols$ink,
+            paper = cols$paper,
             manual_events = manual_events,
             raw_data = raw_data,
             show_raw = isTRUE(isolate(input$show_raw))
@@ -702,14 +573,9 @@ process_server <- function(input, output, session) {
         {
             req(rescaled_data())
 
-            ink <- if (identical(input$color_mode, "dark")) {
-                "#fff"
-            } else {
-                "#373a3c"
-            }
             shapes <- event_shapes(
                 string_to_numeric(input$manual_events),
-                ink = ink,
+                ink = mode_colours(input$color_mode)$ink,
                 time_labels = input$time_labels
             )
             plotly::plotlyProxy("plot", session) |>
@@ -724,25 +590,23 @@ process_server <- function(input, output, session) {
         {
             req(rescaled_data())
 
-            dark <- identical(input$color_mode, "dark")
-            ink <- if (dark) "#fff" else "#373a3c"
-            paper <- if (dark) "#212529" else "#fff"
+            cols <- mode_colours(input$color_mode)
             shapes <- event_shapes(
                 string_to_numeric(input$manual_events),
-                ink = ink,
+                ink = cols$ink,
                 time_labels = input$time_labels
             )
             plotly::plotlyProxy("plot", session) |>
                 plotly::plotlyProxyInvoke(
                     "relayout",
                     list(
-                        paper_bgcolor = paper,
-                        plot_bgcolor = paper,
-                        "font.color" = ink,
-                        "xaxis.color" = ink,
-                        "xaxis.linecolor" = ink,
-                        "yaxis.color" = ink,
-                        "yaxis.linecolor" = ink,
+                        paper_bgcolor = cols$paper,
+                        plot_bgcolor = cols$paper,
+                        "font.color" = cols$ink,
+                        "xaxis.color" = cols$ink,
+                        "xaxis.linecolor" = cols$ink,
+                        "yaxis.color" = cols$ink,
+                        "yaxis.linecolor" = cols$ink,
                         shapes = shapes
                     )
                 )
