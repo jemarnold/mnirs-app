@@ -402,6 +402,140 @@ extract_tab <- function() {
     ))
 }
 
+## Analyse Kinetics Tab ===========================================
+kinetics_tab <- function() {
+    return(nav_panel(
+        "Analyse Kinetics",
+        layout_sidebar(
+            sidebar = sidebar(
+                open = TRUE,
+
+                selectInput(
+                    "kin_method",
+                    label = "Kinetics Method",
+                    choices = c(
+                        "Response Time",
+                        "Peak Slope",
+                        "Monoexponential",
+                        "Biexponential",
+                        "Sigmoidal"
+                    )
+                ),
+
+                hr(),
+                tags$b("Kinetics Window"),
+                numericInput(
+                    "kin_start_time",
+                    label = "Start Time",
+                    value = NA,
+                    updateOn = "blur"
+                ),
+                helpText("Blank = interval start"),
+                numericInput(
+                    "kin_end_window",
+                    label = "End Window Timespan",
+                    value = NA,
+                    min = 0,
+                    updateOn = "blur"
+                ),
+                helpText("Blank = full interval"),
+                selectInput(
+                    "kin_direction",
+                    label = "Response Direction",
+                    choices = c("Auto", "Positive", "Negative")
+                ),
+
+                hr(),
+                tags$b("Method Options"),
+                conditionalPanel(
+                    condition = "input.kin_method == 'Response Time'",
+                    numericInput(
+                        "kin_fraction",
+                        label = "Response Fraction",
+                        value = 0.5,
+                        min = 0,
+                        max = 1,
+                        step = 0.05,
+                        updateOn = "blur"
+                    )
+                ),
+                conditionalPanel(
+                    condition = "input.kin_method == 'Peak Slope'",
+                    helpText(
+                        "Rolling window as Width (samples) OR Span (time)"
+                    ),
+                    numericInput(
+                        "kin_width",
+                        label = "Window Width",
+                        value = NA,
+                        min = 1,
+                        step = 1,
+                        updateOn = "blur"
+                    ),
+                    numericInput(
+                        "kin_span",
+                        label = "Window Span",
+                        value = NA,
+                        min = 0,
+                        updateOn = "blur"
+                    ),
+                    selectInput(
+                        "kin_align",
+                        label = "Window Alignment",
+                        choices = c("Centre", "Left", "Right")
+                    )
+                ),
+                conditionalPanel(
+                    condition = paste(
+                        "input.kin_method == 'Monoexponential' ||",
+                        "input.kin_method == 'Biexponential'"
+                    ),
+                    checkboxInput("kin_use_TD", "Fit Time Delay", value = TRUE)
+                ),
+                conditionalPanel(
+                    condition = "input.kin_method == 'Sigmoidal'",
+                    selectInput(
+                        "kin_shape",
+                        label = "Sigmoid Shape",
+                        choices = c("Symmetric", "Gompertz", "Gompertz-Left")
+                    )
+                ),
+
+                hr(),
+                checkboxInput("kin_free_y", "Free y-axis scales"),
+                checkboxInput("kin_labels", "Show Result Labels", value = TRUE),
+
+                downloadButton(
+                    "kin_download_data",
+                    "Download Fitted Data",
+                    class = "btn-primary"
+                ),
+                downloadButton(
+                    "kin_download_coefs",
+                    "Download Coefficients",
+                    class = "btn-primary"
+                ),
+            ),
+
+            card(
+                fill = FALSE,
+                card_header("Kinetics Fit"),
+                plotOutput("kin_plot", height = "600px")
+            ),
+
+            card(
+                fill = FALSE,
+                card_header("Coefficients"),
+                tableOutput("kin_coefficients"),
+                card_header("Model Diagnostics"),
+                tableOutput("kin_diagnostics"),
+                ## warnings header + table render only when warnings exist
+                uiOutput("kin_warnings_ui")
+            )
+        )
+    ))
+}
+
 ## Instructions Tab ===========================================
 instructions_tab <- function() {
     return(nav_panel(

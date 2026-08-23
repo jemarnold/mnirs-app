@@ -25,6 +25,7 @@ options(
 ## R/ui.R           UI tab builders & theme
 ## R/server_process.R  Process Data tab server
 ## R/server_extract.R  Extract Intervals tab server
+## R/server_kinetics.R Analyse Kinetics tab server
 ## R/utils.R        input parsing & data helpers
 ## R/plotly_mnirs.R interactive plot builder
 
@@ -41,6 +42,7 @@ ui <- page_navbar(
     theme = app_theme(),
     process_tab(),
     extract_tab(),
+    kinetics_tab(),
     instructions_tab(),
     !!!socials_nav()
 )
@@ -48,11 +50,17 @@ ui <- page_navbar(
 ## server ===========================================
 server <- function(input, output, session) {
     shared <- process_server(input, output, session)
-    extract_server(
+    extracted <- extract_server(
         input,
         output,
         session,
         export_data = shared$export_data
+    )
+    kinetics_server(
+        input,
+        output,
+        session,
+        interval_list = extracted$interval_list
     )
 }
 
