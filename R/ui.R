@@ -353,16 +353,20 @@ extract_tab <- function() {
                 ),
 
                 hr(),
-                ## global span applied to all intervals. blank reads as 0
+                ## global signed span offsets applied to all interval
+                ## boundaries: +ve = after, -ve = before. single value
+                ## windows around a lone boundary; blank reads as 0
+                tags$b("Span"),
+                helpText("Extend bounds before start (-ve) and after end (+ve)"),
                 numericInput(
-                    "span_before",
-                    label = "Span Before Start",
+                    "span_start",
+                    label = "Start Span",
                     value = NA,
                     updateOn = "blur"
                 ),
                 numericInput(
-                    "span_after",
-                    label = "Span After End",
+                    "span_end",
+                    label = "End Span",
                     value = NA,
                     updateOn = "blur"
                 ),
@@ -374,6 +378,7 @@ extract_tab <- function() {
                 ),
 
                 checkboxInput("extract_zero_time", "Zero Interval Time"),
+                checkboxInput("interval_free_y", "Free y-axis scales"),
 
                 downloadButton(
                     "download_intervals",

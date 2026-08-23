@@ -47,6 +47,25 @@ extract_server <- function(input, output, session, export_data) {
         req(any(nzchar(trimws(vals))))
 
         bounds <- boundary_times()
+        ## signed span offsets; single blank input recycles scalar by
+        ## sign (mnirs convention: 1 -> c(0, 1), -5 -> c(-5, 0));
+        ## both blank -> c(0, 0)
+        span_vals <- c(
+            blank_to_null(input$span_start),
+            blank_to_null(input$span_end)
+        )
+        span <- if (length(span_vals) == 2L) {
+            span_vals
+        } else {
+            sort(c(0, span_vals %||% 0))
+        }
+
+        ## single boundary side needs positive-width span window
+        validate(need(
+            !xor(is.null(bounds$starts), is.null(bounds$ends)) ||
+                diff(span) > 0,
+            "Cannot process interval range: specify `start` and `end`, or a range with `span`."
+        ))
 
         tryCatch(
             mnirs::extract_intervals(
@@ -58,11 +77,7 @@ extract_server <- function(input, output, session, export_data) {
                     mnirs::by_time(bounds$starts)
                 },
                 end = if (!is.null(bounds$ends)) mnirs::by_time(bounds$ends),
-                ## blank span inputs read as no offset
-                span = c(
-                    blank_to_null(input$span_before) %||% 0,
-                    blank_to_null(input$span_after) %||% 0
-                ),
+                span = span,
                 zero_time = isTRUE(input$extract_zero_time)
             ),
             error = \(e) validate(need(FALSE, clean_cli_message(e)))
@@ -95,15 +110,19 @@ extract_server <- function(input, output, session, export_data) {
         },
         vlines,
         init = plot(export_data(), time_labels = isTRUE(input$time_labels)) +
-            theme_mnirs(base_size = 18)
+            theme_mnirs(base_size = 20)
         )
     })
 
     ## Output: interval plot ========================================
     ## static ggplot facetted by interval; thematic_shiny() themes it
     output$interval_plot <- renderPlot({
-        plot(interval_list(), time_labels = isTRUE(input$time_labels)) +
-            theme_mnirs(base_size = 18, border = "full")
+        plot(
+            interval_list(),
+            time_labels = isTRUE(input$time_labels),
+            scales = if (isTRUE(input$interval_free_y)) "free" else "free_x"
+        ) +
+            theme_mnirs(base_size = 20, border = "full")
     })
 
     ## Download handler =============================================
