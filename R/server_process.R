@@ -411,7 +411,20 @@ process_server <- function(input, output, session, extract_events) {
     ## reactive events data ==============================================
     nirs_data <- reactive({
         req(rescaled_data())
-        add_events(rescaled_data(), string_to_numeric(input$manual_events))
+        events <- string_to_numeric(input$manual_events)
+        time_vec <- rescaled_data()[[metadata()$time_channel]]
+        rng <- range(time_vec, na.rm = TRUE)
+
+        ## out-of-range events would silently snap to first/last sample
+        validate(need(
+            all(!is.na(events) & events >= rng[1L] & events <= rng[2L]),
+            sprintf(
+                "Event markers must be numeric and within the time channel range (%s to %s).",
+                rng[1L],
+                rng[2L]
+            )
+        ))
+        add_events(rescaled_data(), events)
     })
 
     ## reactive base data ==============================================

@@ -50,9 +50,12 @@ process_tab <- function() {
                 ),
 
                 ## input channels
+                tags$b("mNIRS Channel Names"),
+                helpText("Multiple comma-separated"),
                 textInput(
                     "nirs_channels",
-                    label = "mNIRS Channel Names\n(accepts multiple)",
+                    # label = "mNIRS Channel Names\n(multiple comma-separated)",
+                    label = NULL,
                     updateOn = "blur"
                 ),
                 textInput(
@@ -251,11 +254,12 @@ process_tab <- function() {
 
                 hr(),
                 ## place manual event lines in data
+                tags$b("Place Event Markers"),
+                helpText("Time values, multiple comma-separated"),
                 textInput(
                     "manual_events",
-                    label = "Place Event Markers",
+                    label = NULL,
                     placeholder = "60, 120, ...",
-                    # value = c("370, 1080"),
                     updateOn = "blur"
                 ),
 
