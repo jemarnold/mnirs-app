@@ -33,6 +33,37 @@ time_digits <- function(x, max_digits = 2L) {
     return(min(mnirs:::count_decimals(x), max_digits))
 }
 
+## nearest-sample event markers; labels `<prefix>_<time>` at time channel
+## display precision. overwrites existing labels; numeric event channels
+## receive the time value instead
+add_events <- function(data, times, prefix = "event") {
+    if (!length(times)) {
+        return(data)
+    }
+    time_channel <- attr(data, "time_channel")
+    event_channel <- unname(attr(data, "event_channel")) %||% "event"
+    time_vec <- data[[time_channel]]
+
+    idx <- vapply(times, \(.t) which.min(abs(time_vec - .t)), integer(1L))
+    digits <- time_digits(time_vec)
+    time_vals <- round(time_vec[idx], digits)
+
+    if (is.null(data[[event_channel]])) {
+        data[[event_channel]] <- NA_character_
+        attr(data, "event_channel") <- event_channel
+    }
+    data[[event_channel]][idx] <- if (is.numeric(data[[event_channel]])) {
+        time_vals
+    } else {
+        paste0(
+            prefix,
+            "_",
+            vapply(time_vals, mnirs:::signif_trailing, character(1L), digits)
+        )
+    }
+    return(data)
+}
+
 ## Clean CLI error messages
 clean_cli_message <- function(e) {
     msg <- cli::ansi_strip(conditionMessage(e))

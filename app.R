@@ -49,12 +49,17 @@ ui <- page_navbar(
 
 ## server ===========================================
 server <- function(input, output, session) {
-    shared <- process_server(input, output, session)
+    ## resolved interval boundaries, bridged from extract_server back
+    ## into process_server's export_data()
+    extract_events <- reactiveVal(NULL)
+    shared <- process_server(input, output, session, extract_events)
     extracted <- extract_server(
         input,
         output,
         session,
-        export_data = shared$export_data
+        base_data = shared$base_data,
+        export_data = shared$export_data,
+        extract_events = extract_events
     )
     kinetics_server(
         input,

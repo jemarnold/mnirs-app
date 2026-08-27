@@ -1,6 +1,7 @@
 ## Process Data tab server logic. Returns shared reactives used by
-## the Extract Intervals tab (server_extract.R).
-process_server <- function(input, output, session) {
+## the Extract Intervals tab (server_extract.R). extract_events is a
+## reactiveVal of resolved interval boundaries written by extract_server
+process_server <- function(input, output, session, extract_events) {
     ## payload written only by do_read(). raw_data() wrapper surfaces
     ## stored errors via validate() so render contexts (plot, table)
     ## display them in place of old data.
@@ -410,54 +411,14 @@ process_server <- function(input, output, session) {
     ## reactive events data ==============================================
     nirs_data <- reactive({
         req(rescaled_data())
-
-        time_channel <- metadata()$time_channel
-        event_channel <- metadata()$event_channel
-        manual_events <- string_to_numeric(input$manual_events)
-        nirs_data <- rescaled_data()
-        time_vec <- nirs_data[[time_channel]]
-
-        ## add manual event markers using nearest-match
-        if (!is.null(manual_events)) {
-            match_idx <- vapply(
-                manual_events,
-                \(.event) {
-                    which.min(abs(time_vec - .event))
-                },
-                integer(1L)
-            )
-            ## keep the matched sample time; round only to display
-            ## precision so labels carry no floating-point tail
-            digits <- time_digits(time_vec)
-            time_vals <- round(time_vec[match_idx], digits)
-            event_labels <- paste0(
-                "event_",
-                vapply(
-                    time_vals,
-                    mnirs:::signif_trailing,
-                    character(1L),
-                    digits
-                )
-            )
-
-            if (is.null(event_channel)) {
-                nirs_data$event <- NA_character_
-                nirs_data$event[match_idx] <- event_labels
-            } else if (is.numeric(nirs_data[[event_channel]])) {
-                nirs_data[[event_channel]][match_idx] <- time_vals
-            } else {
-                nirs_data[[event_channel]][match_idx] <- event_labels
-            }
-        }
-
-        return(nirs_data)
+        add_events(rescaled_data(), string_to_numeric(input$manual_events))
     })
 
-    ## reactive export data ==============================================
+    ## reactive base data ==============================================
     ## data is read with keep_all = TRUE so extra columns survive the
     ## pipeline; this drops unrecognised columns from the table and
     ## download when the user unticks keep_all
-    export_data <- reactive({
+    base_data <- reactive({
         data <- nirs_data()
 
         if (isTRUE(input$keep_all)) {
@@ -471,6 +432,16 @@ process_server <- function(input, output, session) {
             "event"
         )
         return(data[intersect(names(data), keep)])
+    })
+
+    ## reactive export data ==============================================
+    ## extract-page boundaries marked here so the table and download
+    ## carry them; boundaries themselves resolve from base_data()
+    export_data <- reactive({
+        ev <- extract_events()
+        base_data() |>
+            add_events(ev$starts, "start") |>
+            add_events(ev$ends, "end")
     })
 
     ## Output: Data table ==========================================
@@ -620,5 +591,9 @@ process_server <- function(input, output, session) {
         content = \(file) writexl::write_xlsx(export_data(), path = file)
     )
 
-    return(list(export_data = export_data, metadata = metadata))
+    return(list(
+        base_data = base_data,
+        export_data = export_data,
+        metadata = metadata
+    ))
 }

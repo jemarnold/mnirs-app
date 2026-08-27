@@ -1,8 +1,19 @@
-## Extract Intervals tab server logic. Takes export_data() from
-## process_server() so manual event markers are targets for
-## by_label/by_lap. mixed by_* methods are resolved to sorted times
-## app-side so the boundary plot shares them with extract_intervals()
-extract_server <- function(input, output, session, export_data) {
+## Extract Intervals tab server logic. Boundaries resolve from
+## base_data() (manual event markers are targets for by_label/by_lap)
+## and are published to extract_events so process_server() marks them
+## in export_data(); intervals extract from export_data() so they carry
+## the markers. resolving from base_data() avoids by_label patterns
+## matching the injected start_*/end_* labels. mixed by_* methods are
+## resolved to sorted times app-side so the boundary plot shares them
+## with extract_intervals()
+extract_server <- function(
+    input,
+    output,
+    session,
+    base_data,
+    export_data,
+    extract_events
+) {
     ## all boundary text input ids, e.g. "start_time" ... "end_sample"
     boundary_ids <- outer(
         c("start", "end"),
@@ -14,7 +25,7 @@ extract_server <- function(input, output, session, export_data) {
     ## resolve one side's boundary specs to sorted times
     resolve_side <- function(side) {
         resolve_boundary_times(
-            export_data(),
+            base_data(),
             list(
                 parse_boundary("time", input[[paste0(side, "_time")]]),
                 parse_boundary(
@@ -32,13 +43,17 @@ extract_server <- function(input, output, session, export_data) {
     ## resolve start/end boundary specs to times once; shared by the
     ## boundary plot and extract_intervals(). blank inputs give NULLs
     boundary_times <- reactive({
-        req(export_data())
+        req(base_data())
 
         tryCatch(
             list(starts = resolve_side("start"), ends = resolve_side("end")),
             error = \(e) validate(need(FALSE, clean_cli_message(e)))
         )
     })
+
+    ## publish resolved boundaries for process_server export marking;
+    ## invalid or blank inputs clear the markers
+    observe(extract_events(tryCatch(boundary_times(), error = \(e) NULL)))
 
     interval_list <- reactive({
         req(export_data())
@@ -89,7 +104,7 @@ extract_server <- function(input, output, session, export_data) {
     ## keeps a numeric x scale even with time_labels, so vline
     ## xintercepts are plain seconds in both modes
     output$boundary_plot <- renderPlot({
-        req(export_data())
+        req(base_data())
         bounds <- boundary_times()
 
         vlines <- list(
@@ -109,7 +124,7 @@ extract_server <- function(input, output, session, export_data) {
                 )
         },
         vlines,
-        init = plot(export_data(), time_labels = isTRUE(input$time_labels)) +
+        init = plot(base_data(), time_labels = isTRUE(input$time_labels)) +
             theme_mnirs(base_size = 20)
         )
     })
