@@ -145,6 +145,7 @@ extract_server <- function(
         filename = \() paste0("mnirs_intervals_", Sys.Date(), ".xlsx"),
         content = \(file) writexl::write_xlsx(interval_list(), path = file)
     )
+    toggle_download("download_intervals", interval_list)
 
     ## expose intervals to the kinetics tab
     return(list(interval_list = interval_list))

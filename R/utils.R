@@ -19,6 +19,18 @@ split_named_vec <- function(x) {
     return(setNames(vals, names))
 }
 
+## enable a download button only while its source reactive evaluates
+## without error; req()/validate() failures grey it out so the
+## downloadHandler is never hit with an uncatchable condition (HTTP 500).
+## toggled after flush because the download output's own render re-enables
+## the button client-side when its value arrives
+toggle_download <- function(id, source, session = getDefaultReactiveDomain()) {
+    observe({
+        ok <- !inherits(tryCatch(source(), error = identity), "error")
+        session$onFlushed(\() shinyjs::toggleState(id, condition = ok))
+    })
+}
+
 ## Parse comma-separated numeric values
 string_to_numeric <- function(x) {
     if (!nchar(x)) {

@@ -603,6 +603,7 @@ process_server <- function(input, output, session, extract_events) {
         filename = \() paste0("mnirs_processed_", Sys.Date(), ".xlsx"),
         content = \(file) writexl::write_xlsx(export_data(), path = file)
     )
+    toggle_download("download_data", export_data)
 
     return(list(
         base_data = base_data,

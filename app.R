@@ -10,6 +10,7 @@ suppressPackageStartupMessages({
     library(mnirs)
     library(thematic)
     library(plotly)
+    library(shinyjs)
 })
 
 # pak::pak("jemarnold/mnirs@dev")
@@ -40,6 +41,7 @@ ui <- page_navbar(
         "{mnirs} Data Processing"
     ),
     theme = app_theme(),
+    header = shinyjs::useShinyjs(),
     process_tab(),
     extract_tab(),
     kinetics_tab(),

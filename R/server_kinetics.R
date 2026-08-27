@@ -117,4 +117,6 @@ kinetics_server <- function(input, output, session, interval_list) {
             )
         }
     )
+    toggle_download("kin_download_data", kinetics_results)
+    toggle_download("kin_download_coefs", kinetics_results)
 }
