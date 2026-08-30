@@ -163,6 +163,13 @@ process_server <- function(input, output, session, extract_events) {
                 }
             )
         }
+        if (!nchar(isolate(input$event_channel) %||% "")) {
+            updateTextInput(
+                session,
+                "event_channel",
+                value = event_channel_string(input$upload_file$datapath, md)
+            )
+        }
         if (is.na(isolate(input$sample_rate) %||% NA)) {
             updateNumericInput(
                 session,

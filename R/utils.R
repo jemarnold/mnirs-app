@@ -95,6 +95,28 @@ blank_to_null <- function(x) {
     return(x)
 }
 
+## event_channel input string from detected metadata. artinis attr
+## holds renamed "event", not legend id, so re-read needs "event = <id>"
+event_channel_string <- function(path, md) {
+    if (is.null(md$event_channel)) {
+        return("")
+    }
+    if (!identical(md$nirs_device, "Artinis")) {
+        return(paste(md$event_channel, collapse = ", "))
+    }
+    raw <- mnirs:::read_file(path)
+    legend <- mnirs:::parse_oxysoft_legend(
+        raw,
+        mnirs:::detect_mnirs_device(raw)$header_row
+    )
+    return(paste(
+        names(legend$event),
+        legend$event,
+        sep = " = ",
+        collapse = ", "
+    ))
+}
+
 ## plot ink/paper colours for current bslib colour mode
 mode_colours <- function(mode) {
     if (identical(mode, "dark")) {

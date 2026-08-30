@@ -51,7 +51,7 @@ process_tab <- function() {
 
                 ## input channels
                 tags$b("mNIRS Channel Names"),
-                helpText("Multiple comma-separated"),
+                helpText("Multiples comma-separated"),
                 textInput(
                     "nirs_channels",
                     # label = "mNIRS Channel Names\n(multiple comma-separated)",
@@ -255,7 +255,7 @@ process_tab <- function() {
                 hr(),
                 ## place manual event lines in data
                 tags$b("Place Event Markers"),
-                helpText("Time values, multiple comma-separated"),
+                helpText("Time values, multiples comma-separated"),
                 textInput(
                     "manual_events",
                     label = NULL,
@@ -414,27 +414,14 @@ kinetics_tab <- function() {
             sidebar = sidebar(
                 open = TRUE,
 
-                selectInput(
-                    "kin_method",
-                    label = "Kinetics Method",
-                    choices = c(
-                        "Response Time",
-                        "Peak Slope",
-                        "Monoexponential",
-                        "Biexponential",
-                        "Sigmoidal"
-                    )
-                ),
-
-                hr(),
                 tags$b("Kinetics Window"),
+                helpText("Blank = interval start"),
                 numericInput(
                     "kin_start_time",
                     label = "Start Time",
                     value = NA,
                     updateOn = "blur"
                 ),
-                helpText("Blank = interval start"),
                 numericInput(
                     "kin_end_window",
                     label = "End Window Timespan",
@@ -450,6 +437,18 @@ kinetics_tab <- function() {
                 ),
 
                 hr(),
+                selectInput(
+                    "kin_method",
+                    label = "Kinetics Method",
+                    choices = c(
+                        "Response Time",
+                        "Peak Slope",
+                        "Monoexponential",
+                        "Biexponential",
+                        "Sigmoidal"
+                    )
+                ),
+
                 tags$b("Method Options"),
                 conditionalPanel(
                     condition = "input.kin_method == 'Response Time'",
