@@ -130,15 +130,27 @@ extract_server <- function(
     })
 
     ## Output: interval plot ========================================
-    ## static ggplot facetted by interval; thematic_shiny() themes it
-    output$interval_plot <- renderPlot({
-        plot(
-            interval_list(),
-            time_labels = isTRUE(input$time_labels),
-            scales = if (isTRUE(input$interval_free_y)) "free" else "free_x"
-        ) +
-            theme_mnirs(base_size = 20, border = "full")
+    ## static ggplot facetted by interval; thematic_shiny() themes it.
+    ## max 5 facet columns; height fixed at 600px up to 4 rows, then
+    ## 150px per row so panels don't squash
+    interval_rows <- reactive({
+        x <- interval_list()
+        n <- if (is.data.frame(x)) 1L else length(x)
+        ceiling(n / 5)
     })
+
+    output$interval_plot <- renderPlot(
+        {
+            plot(
+                interval_list(),
+                time_labels = isTRUE(input$time_labels),
+                scales = if (isTRUE(input$interval_free_y)) "free" else "free_x",
+                ncol = 5
+            ) +
+                theme_mnirs(base_size = 20, border = "full")
+        },
+        height = \() max(600, 150 * interval_rows())
+    )
 
     ## Download handler =============================================
     output$download_intervals <- downloadHandler(

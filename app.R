@@ -67,7 +67,8 @@ server <- function(input, output, session) {
         input,
         output,
         session,
-        interval_list = extracted$interval_list
+        interval_list = extracted$interval_list,
+        export_data = shared$export_data
     )
 }
 

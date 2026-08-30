@@ -469,22 +469,9 @@ process_server <- function(input, output, session, extract_events) {
         data <- export_data()
         req(data)
 
-        time_channel <- metadata()$time_channel
-
-        ## format numerics client-side; keeps columns numeric so
-        ## table sorting works and avoids re-formatting in R on
-        ## every invalidation
-        num_cols <- names(data)[vapply(data, is.numeric, logical(1L))]
-        int_cols <- num_cols[vapply(
-            data[num_cols],
-            rlang::is_integerish,
-            logical(1L)
-        )]
-        sig_cols <- setdiff(num_cols, c(int_cols, time_channel))
-
-        dt <- datatable(
+        signif_datatable(
             data,
-            rownames = FALSE,
+            time_channel = metadata()$time_channel,
             options = list(
                 dom = 'frtip',
                 pageLength = 20,
@@ -492,18 +479,6 @@ process_server <- function(input, output, session, extract_events) {
                 searchHighlight = FALSE
             )
         )
-        ## time shown as decimal places, not sig figs: past ~1000 s
-        ## sig figs collapse adjacent samples to the same value
-        dt <- if (time_channel %in% setdiff(num_cols, int_cols)) {
-            formatRound(
-                dt,
-                time_channel,
-                digits = time_digits(data[[time_channel]])
-            )
-        } else {
-            dt
-        }
-        if (length(sig_cols)) formatSignif(dt, sig_cols, digits = 4) else dt
     })
 
     ## Output: Plot ==========================================

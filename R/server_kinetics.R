@@ -1,7 +1,13 @@
 ## Analyse Kinetics tab server logic. fits mnirs::analyse_kinetics()
 ## on intervals from extract_server(); select display labels recoded
 ## to canonical arg values app-side
-kinetics_server <- function(input, output, session, interval_list) {
+kinetics_server <- function(
+    input,
+    output,
+    session,
+    interval_list,
+    export_data
+) {
     ## display label -> analyse_kinetics() method value
     methods <- c(
         "Response Time" = "response_time",
@@ -10,6 +16,27 @@ kinetics_server <- function(input, output, session, interval_list) {
         "Biexponential" = "biexponential",
         "Sigmoidal" = "sigmoidal"
     )
+
+    ## channels driving the fit; updated on data load and on select-box
+    ## blur so each click inside the multi-select does not refit
+    kin_channels <- reactiveVal()
+
+    ## sync channel choices to processed data; first channel selected
+    observeEvent(export_data(), {
+        chs <- attr(export_data(), "nirs_channels")
+        updateSelectizeInput(
+            session,
+            "kin_nirs_channels",
+            choices = chs,
+            selected = chs[1]
+        )
+        kin_channels(chs[1])
+    })
+
+    ## empty JS array arrives as list(); unlist() -> NULL blocks req()
+    observeEvent(input$kin_nirs_channels_blur, {
+        kin_channels(unlist(input$kin_nirs_channels_blur))
+    })
 
     kinetics_results <- reactive({
         ## req outside tryCatch so missing intervals stay silent
@@ -20,6 +47,7 @@ kinetics_server <- function(input, output, session, interval_list) {
         ## blank end_window -> Inf (full interval)
         args <- list(
             data = interval_list(),
+            nirs_channels = req(kin_channels()),
             method = method,
             start_time = blank_to_null(input$kin_start_time),
             direction = tolower(input$kin_direction %||% "Auto"),
@@ -67,40 +95,60 @@ kinetics_server <- function(input, output, session, interval_list) {
     })
 
     ## Output: kinetics plot ========================================
-    ## static ggplot facetted by interval; thematic_shiny() themes it
-    output$kin_plot <- renderPlot({
-        plot(
-            kinetics_results(),
-            labels = isTRUE(input$kin_labels),
-            scales = if (isTRUE(input$kin_free_y)) "free" else "free_x"
-        ) +
-            theme_mnirs(base_size = 20, border = "full")
+    ## static ggplot facetted by interval; thematic_shiny() themes it.
+    ## max 5 facet columns; height fixed at 600px up to 4 rows, then
+    ## 150px per row so panels don't squash
+    kin_rows <- reactive({
+        x <- kinetics_results()$data
+        n <- if (is.data.frame(x)) 1L else length(x)
+        ceiling(n / 5)
     })
 
-    ## Output: results tables =======================================
-    output$kin_coefficients <- renderTable(
-        kinetics_results()$coefficients,
-        digits = 3
+    output$kin_plot <- renderPlot(
+        {
+            plot(
+                kinetics_results(),
+                time_labels = isTRUE(input$time_labels),
+                labels = isTRUE(input$kin_labels),
+                scales = if (isTRUE(input$kin_free_y)) "free" else "free_x",
+                ncol = 5
+            ) +
+                theme_mnirs(base_size = 20, border = "full")
+        },
+        height = \() max(600, 150 * kin_rows())
     )
-    output$kin_diagnostics <- renderTable(
-        kinetics_results()$diagnostics,
-        digits = 3
+
+    ## Output: results tables =======================================
+    ## small static tables: no search/paging controls
+    kin_opts <- list(dom = 't', scrollX = TRUE)
+    output$kin_coefficients <- renderDT(
+        signif_datatable(kinetics_results()$coefficients, options = kin_opts)
+    )
+    output$kin_diagnostics <- renderDT(
+        signif_datatable(kinetics_results()$diagnostics, options = kin_opts)
     )
 
     ## warnings header + table only when warnings exist
     output$kin_warnings_ui <- renderUI({
         req(nrow(kinetics_results()$warnings) > 0L)
-        tagList(card_header("Warnings"), tableOutput("kin_warnings"))
+        tagList(
+            card_header("Warnings"),
+            DTOutput("kin_warnings", fill = FALSE)
+        )
     })
-    output$kin_warnings <- renderTable(kinetics_results()$warnings)
+    output$kin_warnings <- renderDT(
+        signif_datatable(kinetics_results()$warnings, options = kin_opts)
+    )
 
     ## Download handlers ============================================
     output$kin_download_data <- downloadHandler(
         filename = \() paste0("mnirs_kinetics_data_", Sys.Date(), ".xlsx"),
-        content = \(file) writexl::write_xlsx(
-            kinetics_results()$data,
-            path = file
-        )
+        content = \(file) {
+            writexl::write_xlsx(
+                kinetics_results()$data,
+                path = file
+            )
+        }
     )
     output$kin_download_coefs <- downloadHandler(
         filename = \() paste0("mnirs_kinetics_results_", Sys.Date(), ".xlsx"),

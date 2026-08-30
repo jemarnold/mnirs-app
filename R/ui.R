@@ -73,10 +73,10 @@ process_tab <- function() {
                 ## reset start time to zero
                 checkboxInput("zero_time_logical", "Zero Start Time"),
 
-                ## display x as h:mm:ss
+                ## display x as mm:ss
                 checkboxInput(
                     "time_labels",
-                    'Display Time as "h:mm:ss"',
+                    'Display Time as "mm:ss"',
                     value = TRUE
                 ),
 
@@ -361,7 +361,9 @@ extract_tab <- function() {
                 ## boundaries: +ve = after, -ve = before. single value
                 ## windows around a lone boundary; blank reads as 0
                 tags$b("Span"),
-                helpText("Extend bounds before start (-ve) and after end (+ve)"),
+                helpText(
+                    "Extend bounds before start (-ve) and after end (+ve)"
+                ),
                 numericInput(
                     "span_start",
                     label = "Start Span",
@@ -375,6 +377,7 @@ extract_tab <- function() {
                     updateOn = "blur"
                 ),
 
+                hr(),
                 radioButtons(
                     "group_intervals",
                     label = "Group Intervals",
@@ -400,7 +403,7 @@ extract_tab <- function() {
             card(
                 fill = FALSE,
                 card_header("Extracted Intervals"),
-                plotOutput("interval_plot", height = "600px")
+                plotOutput("interval_plot", height = "auto")
             )
         )
     ))
@@ -414,26 +417,25 @@ kinetics_tab <- function() {
             sidebar = sidebar(
                 open = TRUE,
 
-                tags$b("Kinetics Window"),
-                helpText("Blank = interval start"),
-                numericInput(
-                    "kin_start_time",
-                    label = "Start Time",
-                    value = NA,
-                    updateOn = "blur"
-                ),
-                numericInput(
-                    "kin_end_window",
-                    label = "End Window Timespan",
-                    value = NA,
-                    min = 0,
-                    updateOn = "blur"
-                ),
-                helpText("Blank = full interval"),
-                selectInput(
-                    "kin_direction",
-                    label = "Response Direction",
-                    choices = c("Auto", "Positive", "Negative")
+                tags$b("mNIRS Channels"),
+                helpText("Select from multiple"),
+                selectizeInput(
+                    "kin_nirs_channels",
+                    label = NULL,
+                    choices = NULL,
+                    multiple = TRUE,
+                    options = list(
+                        ## push selection to server only when box loses focus
+                        onBlur = I(
+                            'function() {
+                            Shiny.setInputValue(
+                                "kin_nirs_channels_blur",
+                                this.getValue(),
+                                {priority: "event"}
+                            );
+                        }'
+                        )
+                    )
                 ),
 
                 hr(),
@@ -505,6 +507,29 @@ kinetics_tab <- function() {
                 ),
 
                 hr(),
+                tags$b("Kinetics Window"),
+                helpText("Blank = interval start"),
+                numericInput(
+                    "kin_start_time",
+                    label = "Start Time",
+                    value = NA,
+                    updateOn = "blur"
+                ),
+                numericInput(
+                    "kin_end_window",
+                    label = "End Window Timespan",
+                    value = NA,
+                    min = 0,
+                    updateOn = "blur"
+                ),
+                helpText("Blank = full interval"),
+                selectInput(
+                    "kin_direction",
+                    label = "Response Direction",
+                    choices = c("Auto", "Positive", "Negative")
+                ),
+
+                hr(),
                 checkboxInput("kin_free_y", "Free y-axis scales"),
                 checkboxInput("kin_labels", "Show Result Labels", value = TRUE),
 
@@ -522,16 +547,16 @@ kinetics_tab <- function() {
 
             card(
                 fill = FALSE,
-                card_header("Kinetics Fit"),
-                plotOutput("kin_plot", height = "600px")
+                card_header("Kinetics Fits"),
+                plotOutput("kin_plot", height = "auto")
             ),
 
             card(
                 fill = FALSE,
                 card_header("Coefficients"),
-                tableOutput("kin_coefficients"),
+                DTOutput("kin_coefficients", fill = FALSE),
                 card_header("Model Diagnostics"),
-                tableOutput("kin_diagnostics"),
+                DTOutput("kin_diagnostics", fill = FALSE),
                 ## warnings header + table render only when warnings exist
                 uiOutput("kin_warnings_ui")
             )

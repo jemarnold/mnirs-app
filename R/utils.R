@@ -45,6 +45,34 @@ time_digits <- function(x, max_digits = 2L) {
     return(min(mnirs:::count_decimals(x), max_digits))
 }
 
+## DT with numerics formatted client-side: integerish columns as-is,
+## time column at fixed decimals, remaining numerics to sig figs.
+## keeps columns numeric so sorting works; no R-side re-formatting
+signif_datatable <- function(data, time_channel = NULL, digits = 4L, ...) {
+    num_cols <- names(data)[vapply(data, is.numeric, logical(1L))]
+    int_cols <- num_cols[vapply(
+        data[num_cols],
+        rlang::is_integerish,
+        logical(1L)
+    )]
+    sig_cols <- setdiff(num_cols, c(int_cols, time_channel))
+
+    dt <- datatable(data, rownames = FALSE, ...)
+    ## time shown as decimal places, not sig figs: past ~1000 s
+    ## sig figs collapse adjacent samples to the same value
+    if (isTRUE(time_channel %in% setdiff(num_cols, int_cols))) {
+        dt <- formatRound(
+            dt,
+            time_channel,
+            digits = time_digits(data[[time_channel]])
+        )
+    }
+    if (length(sig_cols)) {
+        dt <- formatSignif(dt, sig_cols, digits = digits)
+    }
+    return(dt)
+}
+
 ## nearest-sample event markers; labels `<prefix>_<time>` at time channel
 ## display precision. overwrites existing labels; numeric event channels
 ## receive the time value instead
