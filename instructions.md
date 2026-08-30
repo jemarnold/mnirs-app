@@ -75,9 +75,11 @@ definitionally zero.
 
 #### Place Event Markers:
 Manually add event markers at specified time points. Will add an
-`event_channel` to the data table if not already specified, otherwise
-will add character event labels or numeric time values to an existing
-`event_channel` in the appropriate format.
+`event_channel` to the data table if not already specified. If the
+existing `event_channel` holds character labels, markers are written
+there; if it holds integer lap numbers, it is left unchanged and
+markers are written to a new `event_labels` column placed after it
+(*By Label* on the Extract page then matches `event_labels`).
 
 #### Keep All Columns:
 Either keep all columns in the file data table (the default), or keep

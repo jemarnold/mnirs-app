@@ -1,19 +1,9 @@
-## Extract Intervals tab server logic. Boundaries resolve from
-## base_data() (manual event markers are targets for by_label/by_lap)
-## and are published to extract_events so process_server() marks them
-## in export_data(); intervals extract from export_data() so they carry
-## the markers. resolving from base_data() avoids by_label patterns
-## matching the injected start_*/end_* labels. mixed by_* methods are
-## resolved to sorted times app-side so the boundary plot shares them
-## with extract_intervals()
-extract_server <- function(
-    input,
-    output,
-    session,
-    base_data,
-    export_data,
-    extract_events
-) {
+## Extract Intervals tab server logic. Boundaries and intervals resolve
+## from base_data() (manual event markers are targets for by_label);
+## this page never modifies the data. mixed by_* methods are resolved
+## to sorted times app-side so the boundary plot shares them with
+## extract_intervals()
+extract_server <- function(input, output, session, base_data) {
     ## all boundary text input ids, e.g. "start_time" ... "end_sample"
     boundary_ids <- outer(
         c("start", "end"),
@@ -51,12 +41,8 @@ extract_server <- function(
         )
     })
 
-    ## publish resolved boundaries for process_server export marking;
-    ## invalid or blank inputs clear the markers
-    observe(extract_events(tryCatch(boundary_times(), error = \(e) NULL)))
-
     interval_list <- reactive({
-        req(export_data())
+        req(base_data())
         ## req outside tryCatch so blank inputs stay silent
         vals <- unlist(lapply(boundary_ids, \(.id) input[[.id]]))
         req(any(nzchar(trimws(vals))))
@@ -84,7 +70,7 @@ extract_server <- function(
 
         tryCatch(
             mnirs::extract_intervals(
-                export_data(),
+                base_data(),
                 group_intervals = tolower(
                     input$group_intervals %||% "Distinct"
                 ),

@@ -6,7 +6,7 @@ kinetics_server <- function(
     output,
     session,
     interval_list,
-    export_data
+    base_data
 ) {
     ## display label -> analyse_kinetics() method value
     methods <- c(
@@ -22,8 +22,8 @@ kinetics_server <- function(
     kin_channels <- reactiveVal()
 
     ## sync channel choices to processed data; first channel selected
-    observeEvent(export_data(), {
-        chs <- attr(export_data(), "nirs_channels")
+    observeEvent(base_data(), {
+        chs <- attr(base_data(), "nirs_channels")
         updateSelectizeInput(
             session,
             "kin_nirs_channels",

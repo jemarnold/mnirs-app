@@ -1,7 +1,6 @@
 ## Process Data tab server logic. Returns shared reactives used by
-## the Extract Intervals tab (server_extract.R). extract_events is a
-## reactiveVal of resolved interval boundaries written by extract_server
-process_server <- function(input, output, session, extract_events) {
+## the Extract Intervals and Analyse Kinetics tabs
+process_server <- function(input, output, session) {
     ## payload written only by do_read(). raw_data() wrapper surfaces
     ## stored errors via validate() so render contexts (plot, table)
     ## display them in place of old data.
@@ -449,24 +448,15 @@ process_server <- function(input, output, session, extract_events) {
             metadata()$time_channel,
             metadata()$nirs_channels,
             metadata()$event_channel,
-            "event"
+            "event",
+            "event_labels"
         )
         return(data[intersect(names(data), keep)])
     })
 
-    ## reactive export data ==============================================
-    ## extract-page boundaries marked here so the table and download
-    ## carry them; boundaries themselves resolve from base_data()
-    export_data <- reactive({
-        ev <- extract_events()
-        base_data() |>
-            add_events(ev$starts, "start") |>
-            add_events(ev$ends, "end")
-    })
-
     ## Output: Data table ==========================================
     output$nirs_table <- renderDT({
-        data <- export_data()
+        data <- base_data()
         req(data)
 
         signif_datatable(
@@ -583,9 +573,9 @@ process_server <- function(input, output, session, extract_events) {
     ## Download handler =============================================
     output$download_data <- downloadHandler(
         filename = \() paste0("mnirs_processed_", Sys.Date(), ".xlsx"),
-        content = \(file) writexl::write_xlsx(export_data(), path = file)
+        content = \(file) writexl::write_xlsx(base_data(), path = file)
     )
-    toggle_download("download_data", export_data)
+    toggle_download("download_data", base_data)
 
     ## client-side PNG via plotly.js keeps current zoom, colour mode and
     ## raw traces; scale 3 ≈ 300 dpi at on-screen size
@@ -599,7 +589,6 @@ process_server <- function(input, output, session, extract_events) {
 
     return(list(
         base_data = base_data,
-        export_data = export_data,
         metadata = metadata
     ))
 }

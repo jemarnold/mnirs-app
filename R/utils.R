@@ -89,34 +89,46 @@ signif_datatable <- function(data, time_channel = NULL, digits = 4L, ...) {
     return(dt)
 }
 
-## nearest-sample event markers; labels `<prefix>_<time>` at time channel
-## display precision. overwrites existing labels; numeric event channels
-## receive the time value instead
-add_events <- function(data, times, prefix = "event") {
+## nearest-sample event markers; labels `event_<time>` use the input
+## time as entered, not the snapped sample time. overwrites existing
+## labels. integer lap channels must stay integer for
+## extract_intervals(), so labels go to a character `event_labels`
+## column placed after the event channel
+add_events <- function(data, times) {
     if (!length(times)) {
         return(data)
     }
     time_channel <- attr(data, "time_channel")
-    event_channel <- unname(attr(data, "event_channel")) %||% "event"
+    event_channel <- blank_to_null(unname(attr(data, "event_channel"))) %||% "event"
     time_vec <- data[[time_channel]]
 
     idx <- vapply(times, \(.t) which.min(abs(time_vec - .t)), integer(1L))
-    digits <- time_digits(time_vec)
-    time_vals <- round(time_vec[idx], digits)
+    labels <- paste0(
+        "event_",
+        vapply(times, format, character(1L), scientific = FALSE)
+    )
 
-    if (is.null(data[[event_channel]])) {
+    if (!event_channel %in% names(data)) {
         data[[event_channel]] <- NA_character_
         attr(data, "event_channel") <- event_channel
     }
-    data[[event_channel]][idx] <- if (is.numeric(data[[event_channel]])) {
-        time_vals
+    label_channel <- if (is.character(data[[event_channel]])) {
+        event_channel
     } else {
-        paste0(
-            prefix,
-            "_",
-            vapply(time_vals, mnirs:::signif_trailing, character(1L), digits)
-        )
+        "event_labels"
     }
+    if (!label_channel %in% names(data)) {
+        data[[label_channel]] <- NA_character_
+        ## in-place column reorder keeps mnirs attributes (`data[ord]` drops them)
+        ord <- append(
+            setdiff(names(data), label_channel),
+            label_channel,
+            after = match(event_channel, names(data))
+        )
+        data[] <- data[ord]
+        names(data) <- ord
+    }
+    data[[label_channel]][idx] <- labels
     return(data)
 }
 
@@ -221,14 +233,32 @@ resolve_boundary_times <- function(data, specs, boundary = c("start", "end")) {
         return(NULL)
     }
 
-    args <- list(data, span = 0, group_intervals = "distinct", verbose = FALSE)
-    args[[boundary]] <- specs
-    df_list <- do.call(mnirs::extract_intervals, args)
-    times <- vapply(
-        df_list,
-        \(.df) attr(.df, "interval_times")[[1L]],
-        numeric(1L)
-    )
+    resolve_one <- function(specs, event_channel = NULL) {
+        if (!length(specs)) {
+            return(numeric(0L))
+        }
+        args <- list(
+            data,
+            span = 0,
+            group_intervals = "distinct",
+            verbose = FALSE,
+            event_channel = event_channel
+        )
+        args[[boundary]] <- specs
+        df_list <- do.call(mnirs::extract_intervals, args)
+        vapply(df_list, \(.df) attr(.df, "interval_times")[[1L]], numeric(1L))
+    }
+
+    ## label specs match manual labels in `event_labels` when the event
+    ## channel holds integer lap numbers; lap/time/sample specs stay on it
+    ev <- blank_to_null(unname(attr(data, "event_channel")))
+    is_label <- vapply(specs, `[[`, character(1L), "type") == "label"
+    redirect <- any(is_label) && !is.null(ev) && !is.character(data[[ev]])
+    times <- if (redirect) {
+        c(resolve_one(specs[!is_label]), resolve_one(specs[is_label], "event_labels"))
+    } else {
+        resolve_one(specs)
+    }
     ## over-matching patterns (e.g. ".")
     if (length(times) > 100) {
         stop(
