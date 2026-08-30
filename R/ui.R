@@ -274,11 +274,17 @@ process_tab <- function() {
                     "Download Data",
                     class = "btn-primary"
                 ),
+                ## actionButton: PNG generated client-side by plotly.js
+                actionButton(
+                    "download_plot",
+                    "Download Plot",
+                    class = "btn-primary"
+                ),
             ),
 
             card(
                 fill = FALSE,
-                card_header("Signals Display"),
+                card_header("mNIRS Plot"),
                 plotly::plotlyOutput("plot", height = "600px"),
 
                 card_header("Data Table"),
@@ -392,6 +398,14 @@ extract_tab <- function() {
                     "Download Intervals",
                     class = "btn-primary"
                 ),
+                ## one visible button triggers both hidden download links
+                actionButton(
+                    "download_plots",
+                    "Download Plots",
+                    class = "btn-primary"
+                ),
+                shinyjs::hidden(downloadButton("download_session_plot", "")),
+                shinyjs::hidden(downloadButton("download_facet_plot", "")),
             ),
 
             card(
@@ -541,6 +555,11 @@ kinetics_tab <- function() {
                 downloadButton(
                     "kin_download_coefs",
                     "Download Coefficients",
+                    class = "btn-primary"
+                ),
+                downloadButton(
+                    "kin_download_plot",
+                    "Download Plot",
                     class = "btn-primary"
                 ),
             ),

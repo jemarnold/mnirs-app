@@ -31,6 +31,22 @@ toggle_download <- function(id, source, session = getDefaultReactiveDomain()) {
     })
 }
 
+## save ggplot as 220 mm wide PNG at 300 dpi; height and text size scaled
+## from the on-screen pixel dims so export matches the rendered plotOutput.
+## explicit white bg: thematic_shiny() doesn't apply inside downloadHandler
+save_plot_png <- function(file, plot_fn, w_px, h_px, width_mm = 220) {
+    width_in <- width_mm / 25.4
+    ggsave(
+        file,
+        plot_fn(base_size = 18 * width_in * 96 / w_px),
+        width = width_in,
+        height = width_in * h_px / w_px,
+        units = "in",
+        dpi = 300,
+        bg = "white"
+    )
+}
+
 ## Parse comma-separated numeric values
 string_to_numeric <- function(x) {
     if (!nchar(x)) {

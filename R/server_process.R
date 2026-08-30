@@ -587,6 +587,16 @@ process_server <- function(input, output, session, extract_events) {
     )
     toggle_download("download_data", export_data)
 
+    ## client-side PNG via plotly.js keeps current zoom, colour mode and
+    ## raw traces; scale 3 ≈ 300 dpi at on-screen size
+    observeEvent(input$download_plot, {
+        shinyjs::runjs(sprintf(
+            'Plotly.downloadImage(document.getElementById("plot"), {format: "png", scale: 3, filename: "mnirs_plot_%s"})',
+            Sys.Date()
+        ))
+    })
+    toggle_download("download_plot", rescaled_data)
+
     return(list(
         base_data = base_data,
         export_data = export_data,

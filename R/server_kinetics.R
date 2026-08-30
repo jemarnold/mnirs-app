@@ -104,19 +104,22 @@ kinetics_server <- function(
         ceiling(n / 5)
     })
 
-    output$kin_plot <- renderPlot(
-        {
-            plot(
-                kinetics_results(),
-                time_labels = isTRUE(input$time_labels),
-                labels = isTRUE(input$kin_labels),
-                scales = if (isTRUE(input$kin_free_y)) "free" else "free_x",
-                ncol = 5
-            ) +
-                theme_mnirs(base_size = 20, border = "full")
-        },
-        height = \() max(600, 150 * kin_rows())
-    )
+    kin_height <- \() max(600, 150 * kin_rows())
+
+    kin_gg <- function(base_size = 20) {
+        plot(
+            kinetics_results(),
+            time_labels = isTRUE(input$time_labels),
+            labels = isTRUE(input$kin_labels),
+            scales = if (isTRUE(input$kin_free_y)) "free" else "free_x",
+            ncol = 5,
+            ## geom_text labels are fixed mm, not theme-linked; scale
+            ## with base_size so exports keep the on-screen label:axis ratio
+            label_size = 3.5 * base_size / 20
+        ) +
+            theme_mnirs(base_size = base_size, border = "full")
+    }
+    output$kin_plot <- renderPlot(kin_gg(), height = kin_height)
 
     ## Output: results tables =======================================
     ## small static tables: no search/paging controls
@@ -165,6 +168,16 @@ kinetics_server <- function(
             )
         }
     )
+    output$kin_download_plot <- downloadHandler(
+        filename = \() paste0("kinetics_facet_", Sys.Date(), ".png"),
+        content = \(file) save_plot_png(
+            file,
+            kin_gg,
+            session$clientData$output_kin_plot_width,
+            kin_height()
+        )
+    )
     toggle_download("kin_download_data", kinetics_results)
     toggle_download("kin_download_coefs", kinetics_results)
+    toggle_download("kin_download_plot", kinetics_results)
 }

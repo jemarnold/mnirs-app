@@ -103,7 +103,7 @@ extract_server <- function(
     ## full-data plot with resolved interval boundaries. plot.mnirs
     ## keeps a numeric x scale even with time_labels, so vline
     ## xintercepts are plain seconds in both modes
-    output$boundary_plot <- renderPlot({
+    boundary_gg <- function(base_size = 20) {
         req(base_data())
         bounds <- boundary_times()
 
@@ -125,9 +125,10 @@ extract_server <- function(
         },
         vlines,
         init = plot(base_data(), time_labels = isTRUE(input$time_labels)) +
-            theme_mnirs(base_size = 20)
+            theme_mnirs(base_size = base_size)
         )
-    })
+    }
+    output$boundary_plot <- renderPlot(boundary_gg())
 
     ## Output: interval plot ========================================
     ## static ggplot facetted by interval; thematic_shiny() themes it.
@@ -139,25 +140,50 @@ extract_server <- function(
         ceiling(n / 5)
     })
 
-    output$interval_plot <- renderPlot(
-        {
-            plot(
-                interval_list(),
-                time_labels = isTRUE(input$time_labels),
-                scales = if (isTRUE(input$interval_free_y)) "free" else "free_x",
-                ncol = 5
-            ) +
-                theme_mnirs(base_size = 20, border = "full")
-        },
-        height = \() max(600, 150 * interval_rows())
-    )
+    interval_height <- \() max(600, 150 * interval_rows())
 
-    ## Download handler =============================================
+    interval_gg <- function(base_size = 20) {
+        plot(
+            interval_list(),
+            time_labels = isTRUE(input$time_labels),
+            scales = if (isTRUE(input$interval_free_y)) "free" else "free_x",
+            ncol = 5
+        ) +
+            theme_mnirs(base_size = base_size, border = "full")
+    }
+    output$interval_plot <- renderPlot(interval_gg(), height = interval_height)
+
+    ## Download handlers ============================================
     output$download_intervals <- downloadHandler(
         filename = \() paste0("mnirs_intervals_", Sys.Date(), ".xlsx"),
         content = \(file) writexl::write_xlsx(interval_list(), path = file)
     )
     toggle_download("download_intervals", interval_list)
+
+    output$download_session_plot <- downloadHandler(
+        filename = \() paste0("intervals_session_", Sys.Date(), ".png"),
+        content = \(file) save_plot_png(
+            file,
+            boundary_gg,
+            session$clientData$output_boundary_plot_width,
+            300
+        )
+    )
+    output$download_facet_plot <- downloadHandler(
+        filename = \() paste0("intervals_facet_", Sys.Date(), ".png"),
+        content = \(file) save_plot_png(
+            file,
+            interval_gg,
+            session$clientData$output_interval_plot_width,
+            interval_height()
+        )
+    )
+    ## one visible button triggers both hidden download links
+    observeEvent(input$download_plots, {
+        shinyjs::click("download_session_plot")
+        shinyjs::click("download_facet_plot")
+    })
+    toggle_download("download_plots", interval_list)
 
     ## expose intervals to the kinetics tab
     return(list(interval_list = interval_list))
