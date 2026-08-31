@@ -1,5 +1,19 @@
 ## UI builders for app.R page_navbar()
 
+## textInput / numericInput that update on blur (the app default)
+blur_text <- function(id, label = NULL, ...) {
+    return(textInput(id, label, updateOn = "blur", ...))
+}
+
+blur_numeric <- function(id, label = NULL, value = NA, ...) {
+    return(numericInput(id, label, value = value, updateOn = "blur", ...))
+}
+
+## non-filling card with a header, the standard output container
+output_card <- function(title, ...) {
+    return(card(fill = FALSE, card_header(title), ...))
+}
+
 ## app theme ===================================================
 app_theme <- function() {
     return(
@@ -52,21 +66,11 @@ process_tab <- function() {
                 ## input channels
                 tags$b("mNIRS Channel Names"),
                 helpText("Multiples comma-separated"),
-                textInput(
-                    "nirs_channels",
-                    # label = "mNIRS Channel Names\n(multiple comma-separated)",
-                    label = NULL,
-                    updateOn = "blur"
-                ),
-                textInput(
-                    "time_channel",
-                    label = "Time/Sample Channel Name",
-                    updateOn = "blur"
-                ),
-                textInput(
+                blur_text("nirs_channels"),
+                blur_text("time_channel", "Time/Sample Channel Name"),
+                blur_text(
                     "event_channel",
-                    label = "Lap/Event Channel Name\n(optional)",
-                    updateOn = "blur"
+                    "Lap/Event Channel Name\n(optional)"
                 ),
 
                 hr(),
@@ -80,60 +84,46 @@ process_tab <- function() {
                     value = TRUE
                 ),
 
-                numericInput(
+                blur_numeric(
                     "sample_rate",
-                    label = "Sample Rate\n(estimated automatically)",
-                    value = NA,
-                    min = 0,
-                    updateOn = "blur"
+                    "Sample Rate\n(estimated automatically)",
+                    min = 0
                 ),
-                numericInput(
-                    "resample_rate",
-                    label = "Resample Rate",
-                    value = NA,
-                    min = 0,
-                    updateOn = "blur"
-                ),
+                blur_numeric("resample_rate", "Resample Rate", min = 0),
 
                 hr(),
                 ## remove head/tail timespan
-                numericInput(
+                blur_numeric(
                     "head_trim",
-                    label = "Trim Head Timespan",
-                    value = NA,
+                    "Trim Head Timespan",
                     min = 0,
-                    step = 1,
-                    updateOn = "blur"
+                    step = 1
                 ),
-                numericInput(
+                blur_numeric(
                     "tail_trim",
-                    label = "Trim Tail Timespan",
-                    value = NA,
+                    "Trim Tail Timespan",
                     min = 0,
-                    step = 1,
-                    updateOn = "blur"
+                    step = 1
                 ),
 
                 hr(),
                 ## replace invalid values (column wise)
-                textInput(
+                blur_text(
                     "invalid_values",
-                    label = "Replace Invalid Values",
-                    placeholder = "0, 100, ...",
-                    updateOn = "blur"
+                    "Replace Invalid Values",
+                    placeholder = "0, 100, ..."
                 ),
 
                 ## replace outliers (column wise)
                 checkboxInput("replace_outliers", "Replace Outliers"),
                 conditionalPanel(
                     condition = "input.replace_outliers",
-                    numericInput(
+                    blur_numeric(
                         "outlier_span",
-                        label = "Outlier Detection Span",
+                        "Outlier Detection Span",
                         value = 15,
                         min = 1,
-                        step = 1,
-                        updateOn = "blur"
+                        step = 1
                     )
                 ),
 
@@ -146,44 +136,41 @@ process_tab <- function() {
                     "filter_method",
                     label = "Digital Filter Method",
                     choices = c(
-                        "None",
-                        "Smooth-Spline",
-                        "Butterworth",
-                        "Moving-Average"
+                        "None" = "none",
+                        "Smooth-Spline" = "smooth_spline",
+                        "Butterworth" = "butterworth",
+                        "Moving-Average" = "moving_average"
                     )
                 ),
                 conditionalPanel(
-                    condition = "input.filter_method != 'None'",
+                    condition = "input.filter_method != 'none'",
                     checkboxInput("show_raw", "Show Raw Tracings", FALSE)
                 ),
                 conditionalPanel(
-                    condition = "input.filter_method == 'Butterworth'",
+                    condition = "input.filter_method == 'butterworth'",
                     selectInput(
                         "butter_type",
                         "Butterworth Filter Type",
-                        #, "Stop-Band", "Pass-Band"
-                        choices = c("Low-Pass", "High-Pass")
+                        choices = c("Low-Pass" = "low", "High-Pass" = "high")
                     ),
-                    numericInput(
+                    blur_numeric(
                         "order",
-                        label = "Filter Order",
+                        "Filter Order",
                         value = 2,
                         min = 1,
                         max = 10,
-                        step = 1,
-                        updateOn = "blur"
+                        step = 1
                     ),
-                    numericInput(
+                    blur_numeric(
                         "fc",
-                        label = "Cutoff Frequency (Hz)",
+                        "Cutoff Frequency (Hz)",
                         value = 0.1,
                         min = 0,
-                        step = 0.05,
-                        updateOn = "blur"
+                        step = 0.05
                     )
                 ),
                 conditionalPanel(
-                    condition = "input.filter_method == 'Moving-Average'",
+                    condition = "input.filter_method == 'moving_average'",
                     numericInput(
                         "filter_span",
                         "Moving-Average Span",
@@ -205,27 +192,24 @@ process_tab <- function() {
                 checkboxInput("shift_logical", "Shift Data"),
                 conditionalPanel(
                     condition = "input.shift_logical",
-                    numericInput(
-                        "shift_to",
-                        label = "Shift To",
-                        value = 0,
-                        updateOn = "blur"
-                    ),
+                    blur_numeric("shift_to", "Shift To", value = 0),
                     selectInput(
                         "shift_position",
                         label = "Shift Position",
-                        choices = c("Minimum", "Maximum", "First")
+                        choices = c(
+                            "Minimum" = "min",
+                            "Maximum" = "max",
+                            "First" = "first"
+                        )
                     ),
-                    numericInput(
-                        "shift_span",
-                        label = "Shift Timespan",
-                        value = 1,
-                        updateOn = "blur"
-                    ),
+                    blur_numeric("shift_span", "Shift Timespan", value = 1),
                     selectInput(
                         "shift_which_cols",
                         label = "Shift Channels",
-                        choices = c("Ensemble", "Distinct")
+                        choices = c(
+                            "Ensemble" = "ensemble",
+                            "Distinct" = "distinct"
+                        )
                     )
                 ),
 
@@ -233,22 +217,23 @@ process_tab <- function() {
                 checkboxInput("rescale_logical", "Rescale Data"),
                 conditionalPanel(
                     condition = "input.rescale_logical",
-                    numericInput(
+                    blur_numeric(
                         "rescale_min",
                         "Rescale Range Minimum",
-                        value = 0,
-                        updateOn = "blur"
+                        value = 0
                     ),
-                    numericInput(
+                    blur_numeric(
                         "rescale_max",
-                        label = "Rescale Range Maximum",
-                        value = 100,
-                        updateOn = "blur"
+                        "Rescale Range Maximum",
+                        value = 100
                     ),
                     selectInput(
                         "rescale_which_cols",
                         label = "Rescale Channels",
-                        choices = c("Ensemble", "Distinct")
+                        choices = c(
+                            "Ensemble" = "ensemble",
+                            "Distinct" = "distinct"
+                        )
                     )
                 ),
 
@@ -256,12 +241,7 @@ process_tab <- function() {
                 ## place manual event lines in data
                 tags$b("Place Event Markers"),
                 helpText("Time values, multiples comma-separated"),
-                textInput(
-                    "manual_events",
-                    label = NULL,
-                    placeholder = "60, 120, ...",
-                    updateOn = "blur"
-                ),
+                blur_text("manual_events", placeholder = "60, 120, ..."),
 
                 checkboxInput(
                     "keep_all",
@@ -279,14 +259,12 @@ process_tab <- function() {
                     "download_plot",
                     "Download Plot",
                     class = "btn-primary"
-                ),
+                )
             ),
 
-            card(
-                fill = FALSE,
-                card_header("mNIRS Plot"),
+            output_card(
+                "mNIRS Plot",
                 plotly::plotlyOutput("plot", height = "600px"),
-
                 card_header("Data Table"),
                 DTOutput("nirs_table", fill = FALSE)
             )
@@ -306,63 +284,26 @@ extract_tab <- function() {
                 ## grouped by method with start & end paired together
                 tags$b("Interval Boundaries (accept multiple)"),
 
-                tags$b("By Time"),
-                textInput(
-                    "start_time",
-                    label = "Start",
-                    placeholder = "60, 120, ...",
-                    updateOn = "blur"
-                ),
-                textInput(
-                    "end_time",
-                    label = "End",
-                    updateOn = "blur"
-                ),
-
-                hr(),
-                tags$b("By Label"),
-                textInput(
-                    "start_label",
-                    label = "Start",
-                    updateOn = "blur"
-                ),
-                textInput(
-                    "end_label",
-                    label = "End",
-                    updateOn = "blur"
-                ),
-                checkboxInput(
-                    "label_fixed",
-                    "Fixed (literal) Label Matching"
-                ),
-
-                hr(),
-                tags$b("By Lap"),
-                textInput(
-                    "start_lap",
-                    label = "Start",
-                    updateOn = "blur"
-                ),
-                textInput(
-                    "end_lap",
-                    label = "End",
-                    updateOn = "blur"
-                ),
-
-                hr(),
-                tags$b("By Sample"),
-                textInput(
-                    "start_sample",
-                    label = "Start",
-                    updateOn = "blur"
-                ),
-                textInput(
-                    "end_sample",
-                    label = "End",
-                    updateOn = "blur"
-                ),
-
-                hr(),
+                unname(Map(
+                    \(.id, .label) tagList(
+                        tags$b(.label),
+                        blur_text(
+                            paste0("start_", .id),
+                            "Start",
+                            placeholder = if (.id == "time") "60, 120, ..."
+                        ),
+                        blur_text(paste0("end_", .id), "End"),
+                        if (.id == "label") {
+                            checkboxInput(
+                                "label_fixed",
+                                "Fixed (literal) Label Matching"
+                            )
+                        },
+                        hr()
+                    ),
+                    c("time", "label", "lap", "sample"),
+                    c("By Time", "By Label", "By Lap", "By Sample")
+                )),
                 ## global signed span offsets applied to all interval
                 ## boundaries: +ve = after, -ve = before. single value
                 ## windows around a lone boundary; blank reads as 0
@@ -370,24 +311,17 @@ extract_tab <- function() {
                 helpText(
                     "Extend bounds before start (-ve) and after end (+ve)"
                 ),
-                numericInput(
-                    "span_start",
-                    label = "Start Span",
-                    value = NA,
-                    updateOn = "blur"
-                ),
-                numericInput(
-                    "span_end",
-                    label = "End Span",
-                    value = NA,
-                    updateOn = "blur"
-                ),
+                blur_numeric("span_start", "Start Span"),
+                blur_numeric("span_end", "End Span"),
 
                 hr(),
                 radioButtons(
                     "group_intervals",
                     label = "Group Intervals",
-                    choices = c("Distinct", "Ensemble")
+                    choices = c(
+                        "Distinct" = "distinct",
+                        "Ensemble" = "ensemble"
+                    )
                 ),
 
                 checkboxInput("extract_zero_time", "Zero Interval Time"),
@@ -405,18 +339,16 @@ extract_tab <- function() {
                     class = "btn-primary"
                 ),
                 shinyjs::hidden(downloadButton("download_session_plot", "")),
-                shinyjs::hidden(downloadButton("download_facet_plot", "")),
+                shinyjs::hidden(downloadButton("download_facet_plot", ""))
             ),
 
-            card(
-                fill = FALSE,
-                card_header("Full Plot with Interval Boundaries"),
+            output_card(
+                "Full Plot with Interval Boundaries",
                 plotOutput("boundary_plot", height = "auto")
             ),
 
-            card(
-                fill = FALSE,
-                card_header("Extracted Intervals"),
+            output_card(
+                "Extracted Intervals",
                 plotOutput("interval_plot", height = "auto")
             )
         )
@@ -457,90 +389,82 @@ kinetics_tab <- function() {
                     "kin_method",
                     label = "Kinetics Method",
                     choices = c(
-                        "Response Time",
-                        "Peak Slope",
-                        "Monoexponential",
-                        "Biexponential",
-                        "Sigmoidal"
+                        "Response Time" = "response_time",
+                        "Peak Slope" = "peak_slope",
+                        "Monoexponential" = "monoexponential",
+                        "Biexponential" = "biexponential",
+                        "Sigmoidal" = "sigmoidal"
                     )
                 ),
 
                 tags$b("Method Options"),
                 conditionalPanel(
-                    condition = "input.kin_method == 'Response Time'",
-                    numericInput(
+                    condition = "input.kin_method == 'response_time'",
+                    blur_numeric(
                         "kin_fraction",
-                        label = "Response Fraction",
+                        "Response Fraction",
                         value = 0.5,
                         min = 0,
                         max = 1,
-                        step = 0.05,
-                        updateOn = "blur"
+                        step = 0.05
                     )
                 ),
                 conditionalPanel(
-                    condition = "input.kin_method == 'Peak Slope'",
+                    condition = "input.kin_method == 'peak_slope'",
                     helpText(
                         "Rolling window as Width (samples) OR Span (time)"
                     ),
-                    numericInput(
+                    blur_numeric(
                         "kin_width",
-                        label = "Window Width",
-                        value = NA,
+                        "Window Width",
                         min = 1,
-                        step = 1,
-                        updateOn = "blur"
+                        step = 1
                     ),
-                    numericInput(
-                        "kin_span",
-                        label = "Window Span",
-                        value = NA,
-                        min = 0,
-                        updateOn = "blur"
-                    ),
+                    blur_numeric("kin_span", "Window Span", min = 0),
                     selectInput(
                         "kin_align",
                         label = "Window Alignment",
-                        choices = c("Centre", "Left", "Right")
+                        choices = c(
+                            "Centre" = "centre",
+                            "Left" = "left",
+                            "Right" = "right"
+                        )
                     )
                 ),
                 conditionalPanel(
                     condition = paste(
-                        "input.kin_method == 'Monoexponential' ||",
-                        "input.kin_method == 'Biexponential'"
+                        "input.kin_method == 'monoexponential' ||",
+                        "input.kin_method == 'biexponential'"
                     ),
                     checkboxInput("kin_use_TD", "Fit Time Delay", value = TRUE)
                 ),
                 conditionalPanel(
-                    condition = "input.kin_method == 'Sigmoidal'",
+                    condition = "input.kin_method == 'sigmoidal'",
                     selectInput(
                         "kin_shape",
                         label = "Sigmoid Shape",
-                        choices = c("Symmetric", "Gompertz", "Gompertz-Left")
+                        choices = c(
+                            "Symmetric" = "symmetric",
+                            "Gompertz" = "gompertz",
+                            "Gompertz-Left" = "gompertz_left"
+                        )
                     )
                 ),
 
                 hr(),
                 tags$b("Kinetics Window"),
                 helpText("Blank = interval start"),
-                numericInput(
-                    "kin_start_time",
-                    label = "Start Time",
-                    value = NA,
-                    updateOn = "blur"
-                ),
-                numericInput(
-                    "kin_end_window",
-                    label = "End Window Timespan",
-                    value = NA,
-                    min = 0,
-                    updateOn = "blur"
-                ),
+                blur_numeric("kin_start_time", "Start Time"),
+                blur_numeric("kin_end_window", "End Window Timespan", min = 0),
                 helpText("Blank = full interval"),
                 selectInput(
                     "kin_direction",
                     label = "Response Direction",
-                    choices = c("Auto", "Positive", "Negative")
+                    choices = c(
+                        "Auto" = "auto",
+                        "Positive" = "positive",
+                        "Negative" = "negative"
+                    )
                 ),
 
                 hr(),
@@ -561,18 +485,16 @@ kinetics_tab <- function() {
                     "kin_download_plot",
                     "Download Plot",
                     class = "btn-primary"
-                ),
+                )
             ),
 
-            card(
-                fill = FALSE,
-                card_header("Kinetics Fits"),
+            output_card(
+                "Kinetics Fits",
                 plotOutput("kin_plot", height = "auto")
             ),
 
-            card(
-                fill = FALSE,
-                card_header("Coefficients"),
+            output_card(
+                "Coefficients",
                 DTOutput("kin_coefficients", fill = FALSE),
                 card_header("Model Diagnostics"),
                 DTOutput("kin_diagnostics", fill = FALSE),
@@ -629,31 +551,25 @@ socials_nav <- function() {
             tags$span(
                 style = "display: flex; align-items: center; gap: 15px; padding-right: 15px;",
                 tags$span("Jem Arnold"),
-                tags$a(
-                    href = "https://github.com/jemarnold/mnirs",
-                    target = "_blank",
-                    icon("github"),
-                ),
-                tags$a(
-                    href = "https://bsky.app/profile/jemarnold.bsky.social",
-                    target = "_blank",
-                    icon("bluesky"),
-                ),
-                tags$a(
-                    href = "https://www.linkedin.com/in/jem--arnold/",
-                    target = "_blank",
-                    icon("linkedin"),
-                ),
-                tags$a(
-                    href = "https://twitter.com/jem_arnold",
-                    target = "_blank",
-                    icon("twitter"),
-                ),
-                tags$a(
-                    href = "https://www.researchgate.net/profile/Jem-Arnold",
-                    target = "_blank",
-                    icon("researchgate"),
-                )
+                local({
+                    ## icon name -> profile link
+                    links <- c(
+                        github = "https://github.com/jemarnold/mnirs",
+                        bluesky = "https://bsky.app/profile/jemarnold.bsky.social",
+                        linkedin = "https://www.linkedin.com/in/jem--arnold/",
+                        twitter = "https://twitter.com/jem_arnold",
+                        researchgate = "https://www.researchgate.net/profile/Jem-Arnold"
+                    )
+                    unname(Map(
+                        \(.icon, .href) tags$a(
+                            href = .href,
+                            target = "_blank",
+                            icon(.icon)
+                        ),
+                        names(links),
+                        links
+                    ))
+                })
             )
         )
     ))

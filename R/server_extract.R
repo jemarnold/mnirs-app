@@ -4,30 +4,20 @@
 ## to sorted times app-side so the boundary plot shares them with
 ## extract_intervals()
 extract_server <- function(input, output, session, base_data) {
-    ## all boundary text input ids, e.g. "start_time" ... "end_sample"
-    boundary_ids <- outer(
-        c("start", "end"),
-        c("time", "label", "lap", "sample"),
-        paste,
-        sep = "_"
-    )
+    boundary_methods <- c("time", "label", "lap", "sample")
 
-    ## resolve one side's boundary specs to sorted times
+    ## resolve one side's boundary specs to sorted times; `fixed` is
+    ## ignored by the non-label parse_boundary branches
     resolve_side <- function(side) {
-        resolve_boundary_times(
-            base_data(),
-            list(
-                parse_boundary("time", input[[paste0(side, "_time")]]),
-                parse_boundary(
-                    "label",
-                    input[[paste0(side, "_label")]],
-                    fixed = isTRUE(input$label_fixed)
-                ),
-                parse_boundary("lap", input[[paste0(side, "_lap")]]),
-                parse_boundary("sample", input[[paste0(side, "_sample")]])
+        specs <- Map(
+            \(.m) parse_boundary(
+                .m,
+                input[[paste0(side, "_", .m)]],
+                fixed = isTRUE(input$label_fixed)
             ),
-            boundary = side
+            boundary_methods
         )
+        return(resolve_boundary_times(base_data(), specs, boundary = side))
     }
 
     ## resolve start/end boundary specs to times once; shared by the
@@ -35,16 +25,16 @@ extract_server <- function(input, output, session, base_data) {
     boundary_times <- reactive({
         req(base_data())
 
-        tryCatch(
-            list(starts = resolve_side("start"), ends = resolve_side("end")),
-            error = \(e) validate(need(FALSE, clean_cli_message(e)))
+        try_validate(
+            list(starts = resolve_side("start"), ends = resolve_side("end"))
         )
     })
 
     interval_list <- reactive({
         req(base_data())
-        ## req outside tryCatch so blank inputs stay silent
-        vals <- unlist(lapply(boundary_ids, \(.id) input[[.id]]))
+        ## req outside try_validate so blank inputs stay silent
+        ids <- paste0(rep(c("start_", "end_"), each = 4L), boundary_methods)
+        vals <- unlist(lapply(ids, \(.id) input[[.id]]))
         req(any(nzchar(trimws(vals))))
 
         bounds <- boundary_times()
@@ -68,21 +58,16 @@ extract_server <- function(input, output, session, base_data) {
             "Cannot process interval range: specify `start` and `end`, or a range with `span`."
         ))
 
-        tryCatch(
-            mnirs::extract_intervals(
-                base_data(),
-                group_intervals = tolower(
-                    input$group_intervals %||% "Distinct"
-                ),
-                start = if (!is.null(bounds$starts)) {
-                    mnirs::by_time(bounds$starts)
-                },
-                end = if (!is.null(bounds$ends)) mnirs::by_time(bounds$ends),
-                span = span,
-                zero_time = isTRUE(input$extract_zero_time)
-            ),
-            error = \(e) validate(need(FALSE, clean_cli_message(e)))
-        )
+        try_validate(mnirs::extract_intervals(
+            base_data(),
+            group_intervals = input$group_intervals %||% "distinct",
+            start = if (!is.null(bounds$starts)) {
+                mnirs::by_time(bounds$starts)
+            },
+            end = if (!is.null(bounds$ends)) mnirs::by_time(bounds$ends),
+            span = span,
+            zero_time = isTRUE(input$extract_zero_time)
+        ))
     })
 
     ## Output: boundary plot ========================================
@@ -93,25 +78,22 @@ extract_server <- function(input, output, session, base_data) {
         req(base_data())
         bounds <- boundary_times()
 
-        vlines <- list(
-            list(x = bounds$starts, col = "green4"),
-            list(x = bounds$ends, col = "red3")
-        )
-        Reduce(\(p, v) {
-            if (is.null(v$x)) {
-                return(p)
-            }
-            p +
+        ## empty xintercept draws nothing, so blank sides are safe
+        return(
+            plot(base_data(), time_labels = isTRUE(input$time_labels)) +
                 geom_vline(
-                    xintercept = v$x,
-                    colour = v$col,
+                    xintercept = bounds$starts %||% numeric(),
+                    colour = "green4",
                     linetype = "dashed",
                     alpha = 0.7
-                )
-        },
-        vlines,
-        init = plot(base_data(), time_labels = isTRUE(input$time_labels)) +
-            theme_mnirs(base_size = base_size)
+                ) +
+                geom_vline(
+                    xintercept = bounds$ends %||% numeric(),
+                    colour = "red3",
+                    linetype = "dashed",
+                    alpha = 0.7
+                ) +
+                theme_mnirs(base_size = base_size)
         )
     }
     output$boundary_plot <- render_plot_mm(boundary_gg, \() 80, "boundary_plot")
@@ -120,39 +102,43 @@ extract_server <- function(input, output, session, base_data) {
     ## static ggplot facetted by interval; thematic_shiny() themes it.
     ## dynamic facet grid capped at 5 columns; height grows with facet
     ## rows so panels don't squash
-    interval_n <- reactive({
-        x <- interval_list()
-        if (is.data.frame(x)) 1L else length(x)
-    })
-
-    interval_height_mm <- \() facet_height_mm(facet_rows(interval_n()))
+    interval_dims <- reactive(facet_dims(interval_list()))
 
     interval_gg <- function(base_size = plot_base_size) {
         plot(
             interval_list(),
             time_labels = isTRUE(input$time_labels),
             scales = if (isTRUE(input$interval_free_y)) "free" else "free_x",
-            ncol = facet_ncol(interval_n())
+            ncol = interval_dims()$ncol
         ) +
             theme_mnirs(base_size = base_size, border = "full")
     }
-    output$interval_plot <-
-        render_plot_mm(interval_gg, interval_height_mm, "interval_plot")
+    output$interval_plot <- render_plot_mm(
+        interval_gg,
+        \() interval_dims()$height_mm,
+        "interval_plot"
+    )
 
     ## Download handlers ============================================
-    output$download_intervals <- downloadHandler(
-        filename = \() paste0("mnirs_intervals_", Sys.Date(), ".xlsx"),
-        content = \(file) writexl::write_xlsx(interval_list(), path = file)
+    download_xlsx(
+        output,
+        "download_intervals",
+        "mnirs_intervals",
+        interval_list
     )
-    toggle_download("download_intervals", interval_list)
-
-    output$download_session_plot <- downloadHandler(
-        filename = \() paste0("intervals_session_", Sys.Date(), ".png"),
-        content = \(file) save_plot_png(file, boundary_gg, 80)
+    download_png(
+        output,
+        "download_session_plot",
+        "intervals_session",
+        boundary_gg,
+        \() 80
     )
-    output$download_facet_plot <- downloadHandler(
-        filename = \() paste0("intervals_facet_", Sys.Date(), ".png"),
-        content = \(file) save_plot_png(file, interval_gg, interval_height_mm())
+    download_png(
+        output,
+        "download_facet_plot",
+        "intervals_facet",
+        interval_gg,
+        \() interval_dims()$height_mm
     )
     ## hidden download links: keep outputs alive so hrefs are assigned
     outputOptions(output, "download_session_plot", suspendWhenHidden = FALSE)

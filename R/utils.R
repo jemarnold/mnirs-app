@@ -36,19 +36,16 @@ toggle_download <- function(id, source, session = getDefaultReactiveDomain()) {
 plot_width_mm <- 220
 plot_base_size <- 10
 
-## facet grid: facet_wrap's default squarish layout, capped at 5 columns
-facet_ncol <- function(n) {
-    return(min(ggplot2::wrap_dims(n)[2L], 5L))
-}
-
-facet_rows <- function(n) {
-    return(ceiling(n / facet_ncol(n)))
-}
-
-## facet plot height: aspect 0.5 for a single facet row, 2/3 for 2-4 rows,
-## then +1/6 per row beyond 4
-facet_height_mm <- function(rows) {
-    plot_width_mm * if (rows <= 1) 0.5 else 2 / 3 + max(0, rows - 4) / 8
+## facet layout for a data.frame (1 panel) or list of data.frames:
+## facet_wrap's default squarish grid capped at 5 columns, plus plot
+## height that grows with rows so panels don't squash
+facet_dims <- function(x) {
+    n <- if (is.data.frame(x)) 1L else length(x)
+    ncol <- min(ggplot2::wrap_dims(n)[2L], 5L)
+    rows <- ceiling(n / ncol)
+    height_mm <- plot_width_mm *
+        if (rows <= 1) 0.5 else 2 / 3 + max(0, rows - 4) / 18
+    return(list(ncol = ncol, height_mm = height_mm))
 }
 
 ## render_plot_mm() keeps the plotOutput responsive: it reads the client
@@ -62,10 +59,14 @@ render_plot_mm <- function(
     id,
     session = getDefaultReactiveDomain()
 ) {
-    w_px <- \() session$clientData[[paste0("output_", id, "_width")]] %||%
-        (plot_width_mm / 25.4 * 96)
+    w_px <- \() {
+        session$clientData[[paste0("output_", id, "_width")]] %||%
+            (plot_width_mm / 25.4 * 96)
+    }
     return(renderPlot(
-        gg_fn(base_size = plot_base_size * w_px() * 25.4 / (72 * plot_width_mm)),
+        gg_fn(
+            base_size = plot_base_size * w_px() * 25.4 / (72 * plot_width_mm)
+        ),
         height = \() w_px() * height_mm() / plot_width_mm
     ))
 }
@@ -97,12 +98,6 @@ string_to_numeric <- function(x) {
     return(as.numeric(strsplit(x, split = "\\s*,\\s*")[[1L]]))
 }
 
-## Decimal places for displaying a time vector; capped to avoid
-## floating-point noise from non-terminating sample intervals (e.g. 3 Hz)
-time_digits <- function(x, max_digits = 2L) {
-    return(min(mnirs:::count_decimals(x), max_digits))
-}
-
 ## DT with numerics formatted client-side: integerish columns as-is,
 ## time column at fixed decimals, remaining numerics to sig figs.
 ## keeps columns numeric so sorting works; no R-side re-formatting
@@ -117,12 +112,14 @@ signif_datatable <- function(data, time_channel = NULL, digits = 4L, ...) {
 
     dt <- datatable(data, rownames = FALSE, ...)
     ## time shown as decimal places, not sig figs: past ~1000 s
-    ## sig figs collapse adjacent samples to the same value
+    ## sig figs collapse adjacent samples to the same value; decimals
+    ## capped at 2 to avoid floating-point noise from non-terminating
+    ## sample intervals (e.g. 3 Hz)
     if (isTRUE(time_channel %in% setdiff(num_cols, int_cols))) {
         dt <- formatRound(
             dt,
             time_channel,
-            digits = time_digits(data[[time_channel]])
+            digits = min(mnirs:::count_decimals(data[[time_channel]]), 2L)
         )
     }
     if (length(sig_cols)) {
@@ -224,22 +221,6 @@ mode_colours <- function(mode) {
     return(list(ink = "#373a3c", paper = "#fff"))
 }
 
-## Conditional data transformation
-apply_if <- function(data, condition, fn, ...) {
-    if (condition) return(fn(data, ...)) else return(data)
-}
-
-## Trim rows from the head of a time series
-trim_head <- function(data, time_channel, trim) {
-    data[data[[time_channel]] > trim, ]
-}
-
-## Trim rows from the tail of a time series
-trim_tail <- function(data, time_channel, trim) {
-    cutoff <- max(data[[time_channel]], na.rm = TRUE) - trim
-    data[data[[time_channel]] < cutoff, ]
-}
-
 ## single-method extract_intervals boundary spec from comma-separated text
 parse_boundary <- function(method, x, fixed = FALSE) {
     x <- blank_to_null(trimws(x %||% ""))
@@ -317,17 +298,46 @@ resolve_boundary_times <- function(data, specs, boundary = c("start", "end")) {
     return(sort(times))
 }
 
-## Safe wrapper for filter_mnirs with error handling
-try_filter <- function(data, nirs_channels, time_channel, ...) {
-    tryCatch(
-        mnirs::filter_mnirs(
-            data,
-            nirs_channels = nirs_channels,
-            time_channel = time_channel,
-            ...
-        ),
-        error = \(e) {
-            validate(need(FALSE, clean_cli_message(e)))
-        }
+## run expr, converting errors to validate() messages shown in outputs
+try_validate <- function(expr) {
+    return(tryCatch(expr, error = \(e) {
+        validate(need(FALSE, clean_cli_message(e)))
+    }))
+}
+
+## downloadHandler + enable-toggle for a dated xlsx export;
+## content_fn returns a data frame or named list of data frames
+download_xlsx <- function(
+    output,
+    id,
+    prefix,
+    content_fn,
+    enable_fn = content_fn
+) {
+    output[[id]] <- downloadHandler(
+        filename = \() paste0(prefix, "_", Sys.Date(), ".xlsx"),
+        content = \(file) writexl::write_xlsx(content_fn(), path = file)
     )
+    toggle_download(id, enable_fn)
+    return(invisible(NULL))
+}
+
+## downloadHandler for a dated PNG export via save_plot_png();
+## enable_fn = NULL when a sibling button owns the toggle
+download_png <- function(
+    output,
+    id,
+    prefix,
+    gg_fn,
+    height_mm_fn,
+    enable_fn = NULL
+) {
+    output[[id]] <- downloadHandler(
+        filename = \() paste0(prefix, "_", Sys.Date(), ".png"),
+        content = \(file) save_plot_png(file, gg_fn, height_mm_fn())
+    )
+    if (!is.null(enable_fn)) {
+        toggle_download(id, enable_fn)
+    }
+    return(invisible(NULL))
 }

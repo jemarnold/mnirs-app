@@ -1,6 +1,5 @@
 ## Analyse Kinetics tab server logic. fits mnirs::analyse_kinetics()
-## on intervals from extract_server(); select display labels recoded
-## to canonical arg values app-side
+## on intervals from extract_server()
 kinetics_server <- function(
     input,
     output,
@@ -8,15 +7,6 @@ kinetics_server <- function(
     interval_list,
     base_data
 ) {
-    ## display label -> analyse_kinetics() method value
-    methods <- c(
-        "Response Time" = "response_time",
-        "Peak Slope" = "peak_slope",
-        "Monoexponential" = "monoexponential",
-        "Biexponential" = "biexponential",
-        "Sigmoidal" = "sigmoidal"
-    )
-
     ## channels driving the fit; updated on data load and on select-box
     ## blur so each click inside the multi-select does not refit
     kin_channels <- reactiveVal()
@@ -39,9 +29,9 @@ kinetics_server <- function(
     })
 
     kinetics_results <- reactive({
-        ## req outside tryCatch so missing intervals stay silent
+        ## req outside try_validate so missing intervals stay silent
         req(interval_list())
-        method <- methods[[req(input$kin_method)]]
+        method <- req(input$kin_method)
 
         ## shared args; blank numerics -> NULL (metadata defaults),
         ## blank end_window -> Inf (full interval)
@@ -50,7 +40,7 @@ kinetics_server <- function(
             nirs_channels = req(kin_channels()),
             method = method,
             start_time = blank_to_null(input$kin_start_time),
-            direction = tolower(input$kin_direction %||% "Auto"),
+            direction = input$kin_direction %||% "auto",
             end_window = blank_to_null(input$kin_end_window) %||% Inf,
             partial = FALSE,
             na.rm = TRUE
@@ -73,37 +63,22 @@ kinetics_server <- function(
                 list(
                     width = width,
                     span = span,
-                    align = tolower(input$kin_align %||% "Centre")
+                    align = input$kin_align %||% "centre"
                 )
             },
             monoexponential = list(use_TD = isTRUE(input$kin_use_TD)),
             biexponential = list(use_TD = isTRUE(input$kin_use_TD)),
-            sigmoidal = list(
-                shape = switch(
-                    input$kin_shape %||% "Symmetric",
-                    "Symmetric" = "symmetric",
-                    "Gompertz" = "gompertz",
-                    "Gompertz-Left" = "gompertz_left"
-                )
-            )
+            sigmoidal = list(shape = input$kin_shape %||% "symmetric")
         )
 
-        tryCatch(
-            do.call(mnirs::analyse_kinetics, c(args, extra)),
-            error = \(e) validate(need(FALSE, clean_cli_message(e)))
-        )
+        try_validate(do.call(mnirs::analyse_kinetics, c(args, extra)))
     })
 
     ## Output: kinetics plot ========================================
     ## static ggplot facetted by interval; thematic_shiny() themes it.
     ## dynamic facet grid capped at 5 columns; height grows with facet
     ## rows so panels don't squash
-    kin_n <- reactive({
-        x <- kinetics_results()$data
-        if (is.data.frame(x)) 1L else length(x)
-    })
-
-    kin_height_mm <- \() facet_height_mm(facet_rows(kin_n()))
+    kin_dims <- reactive(facet_dims(kinetics_results()$data))
 
     kin_gg <- function(base_size = plot_base_size) {
         plot(
@@ -111,7 +86,7 @@ kinetics_server <- function(
             time_labels = isTRUE(input$time_labels),
             labels = isTRUE(input$kin_labels),
             scales = if (isTRUE(input$kin_free_y)) "free" else "free_x",
-            ncol = facet_ncol(kin_n()),
+            ncol = kin_dims()$ncol,
             ## geom_text size is absolute mm, so it must track base_size to
             ## keep the same label:text ratio on the wide screen device and
             ## the canonical-width export
@@ -119,7 +94,11 @@ kinetics_server <- function(
         ) +
             theme_mnirs(base_size = base_size, border = "full")
     }
-    output$kin_plot <- render_plot_mm(kin_gg, kin_height_mm, "kin_plot")
+    output$kin_plot <- render_plot_mm(
+        kin_gg,
+        \() kin_dims()$height_mm,
+        "kin_plot"
+    )
 
     ## Output: results tables =======================================
     ## small static tables: no search/paging controls
@@ -144,35 +123,34 @@ kinetics_server <- function(
     )
 
     ## Download handlers ============================================
-    output$kin_download_data <- downloadHandler(
-        filename = \() paste0("mnirs_kinetics_data_", Sys.Date(), ".xlsx"),
-        content = \(file) {
-            writexl::write_xlsx(
-                kinetics_results()$data,
-                path = file
-            )
-        }
+    download_xlsx(
+        output,
+        "kin_download_data",
+        "mnirs_kinetics_data",
+        \() kinetics_results()$data,
+        enable_fn = kinetics_results
     )
-    output$kin_download_coefs <- downloadHandler(
-        filename = \() paste0("mnirs_kinetics_results_", Sys.Date(), ".xlsx"),
-        content = \(file) {
+    download_xlsx(
+        output,
+        "kin_download_coefs",
+        "mnirs_kinetics_results",
+        \() {
             results <- kinetics_results()
-            writexl::write_xlsx(
-                list(
-                    "coefficients" = results$coefficients,
-                    "diagnostics" = results$diagnostics,
-                    "warnings" = results$warnings,
-                    "channel arguments" = results$channel_args
-                ),
-                path = file
+            list(
+                "coefficients" = results$coefficients,
+                "diagnostics" = results$diagnostics,
+                "warnings" = results$warnings,
+                "channel arguments" = results$channel_args
             )
-        }
+        },
+        enable_fn = kinetics_results
     )
-    output$kin_download_plot <- downloadHandler(
-        filename = \() paste0("kinetics_facet_", Sys.Date(), ".png"),
-        content = \(file) save_plot_png(file, kin_gg, kin_height_mm())
+    download_png(
+        output,
+        "kin_download_plot",
+        "kinetics_facet",
+        kin_gg,
+        \() kin_dims()$height_mm,
+        enable_fn = kinetics_results
     )
-    toggle_download("kin_download_data", kinetics_results)
-    toggle_download("kin_download_coefs", kinetics_results)
-    toggle_download("kin_download_plot", kinetics_results)
 }

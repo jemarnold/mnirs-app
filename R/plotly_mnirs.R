@@ -60,70 +60,62 @@ plotly_mnirs <- function(
         mnirs::format_hmmss(time_vec)
     } else {
         ## decimal places, not sig figs: sig figs collapse adjacent
-        ## samples to the same hover time past ~1000 s
+        ## samples to the same hover time past ~1000 s; capped at 2
+        ## to avoid floating-point noise from non-terminating sample
+        ## intervals (e.g. 3 Hz)
         mnirs:::signif_trailing(
             data[[time_ch]],
-            time_digits(data[[time_ch]])
+            min(mnirs:::count_decimals(data[[time_ch]]), 2L)
         )
     }
 
-    plot <- plotly::plot_ly()
-
-    ## optional raw (unfiltered) traces drawn first at low alpha;
-    ## always added when available so plotlyProxy can toggle
-    ## visibility without a full rebuild
-    if (!is.null(raw_data)) {
-        plot <- Reduce(\(p, i) {
+    ## one scattergl line trace per NIRS channel; raw (unfiltered)
+    ## traces drawn first at low alpha with hover/legend suppressed, so
+    ## plotlyProxy can toggle their visibility without a full rebuild
+    add_channel_traces <- function(plot, src, raw) {
+        return(Reduce(\(p, i) {
             plotly::add_trace(
                 p,
                 x = time_vec,
-                y = raw_data[[nirs_ch[[i]]]],
+                y = src[[nirs_ch[[i]]]],
                 type = "scattergl",
                 mode = "lines",
-                name = paste0(nirs_ch[[i]], " (raw)"),
-                showlegend = FALSE,
-                hoverinfo = "skip",
-                visible = show_raw,
-                line = list(color = colours[[i]], width = 1),
-                opacity = 0.6
+                name = if (raw) paste0(nirs_ch[[i]], " (raw)") else nirs_ch[[i]],
+                showlegend = !raw,
+                hoverinfo = if (raw) "skip" else NULL,
+                visible = if (raw) show_raw else TRUE,
+                opacity = if (raw) 0.6 else 1,
+                line = list(color = colours[[i]], width = if (raw) 1 else 1.5),
+                text = if (raw) NULL else time_label,
+                hovertemplate = if (raw) NULL else paste0(
+                    time_ch, ": %{text}<br>",
+                    "<b>", nirs_ch[[i]], ":</b> %{y:.2f}<extra></extra>"
+                )
             )
-        }, seq_along(nirs_ch), init = plot)
+        }, seq_along(nirs_ch), init = plot))
     }
 
-    ## one line trace per NIRS channel
-    plot <- Reduce(\(p, i) {
-        plotly::add_trace(
-            p,
-            x = time_vec,
-            y = data[[nirs_ch[[i]]]],
-            type = "scattergl",
-            mode = "lines",
-            name = nirs_ch[[i]],
-            showlegend = TRUE,
-            line = list(color = colours[[i]], width = 1.5),
-            text = time_label,
-            hovertemplate = paste0(
-                time_ch, ": %{text}<br>",
-                "<b>", nirs_ch[[i]], ":</b> %{y:.2f}<extra></extra>"
-            )
-        )
-    }, seq_along(nirs_ch), init = plot)
+    plot <- plotly::plot_ly()
+    if (!is.null(raw_data)) {
+        plot <- add_channel_traces(plot, raw_data, raw = TRUE)
+    }
+    plot <- add_channel_traces(plot, data, raw = FALSE)
 
     shapes <- event_shapes(manual_events, ink, time_labels)
 
-    ## x-axis with optional h:mm:ss tick text
-    xaxis <- list(
-        title = if (time_labels) paste(time_ch, "(h:mm:ss)") else time_ch,
+    ## shared axis styling; x-axis gets optional h:mm:ss tick text
+    axis_style <- list(
         showgrid = FALSE,
         zeroline = FALSE,
         showline = TRUE,
         linecolor = ink,
         color = ink
     )
-    if (time_labels) {
-        xaxis$type <- "date"
-        xaxis$tickformat <- "%-H:%M:%S"
-    }
+    xaxis <- c(
+        list(title = if (time_labels) paste(time_ch, "(h:mm:ss)") else time_ch),
+        axis_style,
+        if (time_labels) list(type = "date", tickformat = "%-H:%M:%S")
+    )
 
     plotly::layout(
         plot,
@@ -131,14 +123,7 @@ plotly_mnirs <- function(
         plot_bgcolor = paper,
         font = list(size = base_size * 0.7, color = ink),
         xaxis = xaxis,
-        yaxis = list(
-            title = "mNIRS",
-            showgrid = FALSE,
-            zeroline = FALSE,
-            showline = TRUE,
-            linecolor = ink,
-            color = ink
-        ),
+        yaxis = c(list(title = "mNIRS"), axis_style),
         shapes = shapes,
         showlegend = TRUE,
         legend = list(
