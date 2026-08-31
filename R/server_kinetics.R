@@ -67,7 +67,10 @@ kinetics_server <- function(
                 )
             },
             monoexponential = list(use_TD = isTRUE(input$kin_use_TD)),
-            biexponential = list(use_TD = isTRUE(input$kin_use_TD)),
+            exponential_drift = list(
+                use_TD = isTRUE(input$kin_use_TD),
+                tau_mult = blank_to_null(input$kin_tau_mult) %||% 3
+            ),
             sigmoidal = list(shape = input$kin_shape %||% "symmetric")
         )
 

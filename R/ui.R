@@ -392,7 +392,7 @@ kinetics_tab <- function() {
                         "Response Time" = "response_time",
                         "Peak Slope" = "peak_slope",
                         "Monoexponential" = "monoexponential",
-                        "Biexponential" = "biexponential",
+                        "Exponential Drift" = "exponential_drift",
                         "Sigmoidal" = "sigmoidal"
                     )
                 ),
@@ -434,9 +434,23 @@ kinetics_tab <- function() {
                 conditionalPanel(
                     condition = paste(
                         "input.kin_method == 'monoexponential' ||",
-                        "input.kin_method == 'biexponential'"
+                        "input.kin_method == 'exponential_drift'"
                     ),
-                    checkboxInput("kin_use_TD", "Fit Time Delay", value = TRUE)
+                    checkboxInput(
+                        "kin_use_TD",
+                        "Fit Time Delay (TD)",
+                        value = TRUE
+                    )
+                ),
+                conditionalPanel(
+                    condition = "input.kin_method == 'exponential_drift'",
+                    blur_numeric(
+                        "kin_tau_mult",
+                        "Drift Onset (× tau)",
+                        value = 3,
+                        min = 0.1,
+                        step = 0.5
+                    )
                 ),
                 conditionalPanel(
                     condition = "input.kin_method == 'sigmoidal'",
@@ -519,12 +533,10 @@ instructions_tab <- function() {
                 card_header("Citation"),
                 markdown(
                     '
-        This is a basic implementation of functionality provided in the
-        open-source R package *{mnirs}*.
+        This app provides basic functionality from the open-source R 
+        package *{mnirs}*, available on [CRAN](https://cran.r-project.org/web/packages/mnirs/index.html).
 
-        Available from: https://github.com/jemarnold/mnirs
-
-        For more information see the *{mnirs}* package documentation:
+        See *{mnirs}* package documentation:
         https://jemarnold.github.io/mnirs/index.html
 
         Author: Jem Arnold'
