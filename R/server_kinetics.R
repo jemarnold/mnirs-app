@@ -96,30 +96,30 @@ kinetics_server <- function(
 
     ## Output: kinetics plot ========================================
     ## static ggplot facetted by interval; thematic_shiny() themes it.
-    ## max 5 facet columns; height fixed at 600px up to 4 rows, then
-    ## 150px per row so panels don't squash
-    kin_rows <- reactive({
+    ## dynamic facet grid capped at 5 columns; height grows with facet
+    ## rows so panels don't squash
+    kin_n <- reactive({
         x <- kinetics_results()$data
-        n <- if (is.data.frame(x)) 1L else length(x)
-        ceiling(n / 5)
+        if (is.data.frame(x)) 1L else length(x)
     })
 
-    kin_height <- \() max(600, 150 * kin_rows())
+    kin_height_mm <- \() facet_height_mm(facet_rows(kin_n()))
 
-    kin_gg <- function(base_size = 20) {
+    kin_gg <- function(base_size = plot_base_size) {
         plot(
             kinetics_results(),
             time_labels = isTRUE(input$time_labels),
             labels = isTRUE(input$kin_labels),
             scales = if (isTRUE(input$kin_free_y)) "free" else "free_x",
-            ncol = 5,
-            ## geom_text labels are fixed mm, not theme-linked; scale
-            ## with base_size so exports keep the on-screen label:axis ratio
-            label_size = 3.5 * base_size / 20
+            ncol = facet_ncol(kin_n()),
+            ## geom_text size is absolute mm, so it must track base_size to
+            ## keep the same label:text ratio on the wide screen device and
+            ## the canonical-width export
+            label_size = 3 * base_size / plot_base_size
         ) +
             theme_mnirs(base_size = base_size, border = "full")
     }
-    output$kin_plot <- renderPlot(kin_gg(), height = kin_height)
+    output$kin_plot <- render_plot_mm(kin_gg, kin_height_mm, "kin_plot")
 
     ## Output: results tables =======================================
     ## small static tables: no search/paging controls
@@ -170,12 +170,7 @@ kinetics_server <- function(
     )
     output$kin_download_plot <- downloadHandler(
         filename = \() paste0("kinetics_facet_", Sys.Date(), ".png"),
-        content = \(file) save_plot_png(
-            file,
-            kin_gg,
-            session$clientData$output_kin_plot_width,
-            kin_height()
-        )
+        content = \(file) save_plot_png(file, kin_gg, kin_height_mm())
     )
     toggle_download("kin_download_data", kinetics_results)
     toggle_download("kin_download_coefs", kinetics_results)

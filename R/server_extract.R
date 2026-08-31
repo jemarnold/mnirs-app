@@ -89,7 +89,7 @@ extract_server <- function(input, output, session, base_data) {
     ## full-data plot with resolved interval boundaries. plot.mnirs
     ## keeps a numeric x scale even with time_labels, so vline
     ## xintercepts are plain seconds in both modes
-    boundary_gg <- function(base_size = 20) {
+    boundary_gg <- function(base_size = plot_base_size) {
         req(base_data())
         bounds <- boundary_times()
 
@@ -114,30 +114,30 @@ extract_server <- function(input, output, session, base_data) {
             theme_mnirs(base_size = base_size)
         )
     }
-    output$boundary_plot <- renderPlot(boundary_gg())
+    output$boundary_plot <- render_plot_mm(boundary_gg, \() 80, "boundary_plot")
 
     ## Output: interval plot ========================================
     ## static ggplot facetted by interval; thematic_shiny() themes it.
-    ## max 5 facet columns; height fixed at 600px up to 4 rows, then
-    ## 150px per row so panels don't squash
-    interval_rows <- reactive({
+    ## dynamic facet grid capped at 5 columns; height grows with facet
+    ## rows so panels don't squash
+    interval_n <- reactive({
         x <- interval_list()
-        n <- if (is.data.frame(x)) 1L else length(x)
-        ceiling(n / 5)
+        if (is.data.frame(x)) 1L else length(x)
     })
 
-    interval_height <- \() max(600, 150 * interval_rows())
+    interval_height_mm <- \() facet_height_mm(facet_rows(interval_n()))
 
-    interval_gg <- function(base_size = 20) {
+    interval_gg <- function(base_size = plot_base_size) {
         plot(
             interval_list(),
             time_labels = isTRUE(input$time_labels),
             scales = if (isTRUE(input$interval_free_y)) "free" else "free_x",
-            ncol = 5
+            ncol = facet_ncol(interval_n())
         ) +
             theme_mnirs(base_size = base_size, border = "full")
     }
-    output$interval_plot <- renderPlot(interval_gg(), height = interval_height)
+    output$interval_plot <-
+        render_plot_mm(interval_gg, interval_height_mm, "interval_plot")
 
     ## Download handlers ============================================
     output$download_intervals <- downloadHandler(
@@ -148,26 +148,21 @@ extract_server <- function(input, output, session, base_data) {
 
     output$download_session_plot <- downloadHandler(
         filename = \() paste0("intervals_session_", Sys.Date(), ".png"),
-        content = \(file) save_plot_png(
-            file,
-            boundary_gg,
-            session$clientData$output_boundary_plot_width,
-            300
-        )
+        content = \(file) save_plot_png(file, boundary_gg, 80)
     )
     output$download_facet_plot <- downloadHandler(
         filename = \() paste0("intervals_facet_", Sys.Date(), ".png"),
-        content = \(file) save_plot_png(
-            file,
-            interval_gg,
-            session$clientData$output_interval_plot_width,
-            interval_height()
-        )
+        content = \(file) save_plot_png(file, interval_gg, interval_height_mm())
     )
-    ## one visible button triggers both hidden download links
+    ## hidden download links: keep outputs alive so hrefs are assigned
+    outputOptions(output, "download_session_plot", suspendWhenHidden = FALSE)
+    outputOptions(output, "download_facet_plot", suspendWhenHidden = FALSE)
+
+    ## one visible button triggers both hidden download links; second
+    ## click delayed so the browser registers both downloads
     observeEvent(input$download_plots, {
         shinyjs::click("download_session_plot")
-        shinyjs::click("download_facet_plot")
+        shinyjs::delay(500, shinyjs::click("download_facet_plot"))
     })
     toggle_download("download_plots", interval_list)
 

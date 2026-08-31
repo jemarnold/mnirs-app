@@ -411,7 +411,7 @@ extract_tab <- function() {
             card(
                 fill = FALSE,
                 card_header("Full Plot with Interval Boundaries"),
-                plotOutput("boundary_plot", height = "300px")
+                plotOutput("boundary_plot", height = "auto")
             ),
 
             card(

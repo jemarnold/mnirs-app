@@ -31,19 +31,61 @@ toggle_download <- function(id, source, session = getDefaultReactiveDomain()) {
     })
 }
 
-## save ggplot as 220 mm wide PNG at 300 dpi; height and text size scaled
-## from the on-screen pixel dims so export matches the rendered plotOutput.
-## explicit white bg: thematic_shiny() doesn't apply inside downloadHandler
-save_plot_png <- function(file, plot_fn, w_px, h_px, width_mm = 220) {
-    width_in <- width_mm / 25.4
-    ggsave(
-        file,
-        plot_fn(base_size = 18 * width_in * 96 / w_px),
-        width = width_in,
-        height = width_in * h_px / w_px,
-        units = "in",
-        dpi = 300,
-        bg = "white"
+## canonical ggplot dimensions: all ggplots are sized as-if plot_width_mm
+## wide at plot_base_size text, on screen and in PNG exports; adjust here
+plot_width_mm <- 220
+plot_base_size <- 10
+
+## facet grid: facet_wrap's default squarish layout, capped at 5 columns
+facet_ncol <- function(n) {
+    return(min(ggplot2::wrap_dims(n)[2L], 5L))
+}
+
+facet_rows <- function(n) {
+    return(ceiling(n / facet_ncol(n)))
+}
+
+## facet plot height: aspect 0.5 for a single facet row, 2/3 for 2-4 rows,
+## then +1/6 per row beyond 4
+facet_height_mm <- function(rows) {
+    plot_width_mm * if (rows <= 1) 0.5 else 2 / 3 + max(0, rows - 4) / 8
+}
+
+## render_plot_mm() keeps the plotOutput responsive: it reads the client
+## pixel width and scales base_size (text) and height so proportions match
+## the canonical-width export exactly at any window size; the px fallback
+## (canonical width at 96 dpi) covers the gap before the first client
+## width report
+render_plot_mm <- function(
+    gg_fn,
+    height_mm,
+    id,
+    session = getDefaultReactiveDomain()
+) {
+    w_px <- \() session$clientData[[paste0("output_", id, "_width")]] %||%
+        (plot_width_mm / 25.4 * 96)
+    return(renderPlot(
+        gg_fn(base_size = plot_base_size * w_px() * 25.4 / (72 * plot_width_mm)),
+        height = \() w_px() * height_mm() / plot_width_mm
+    ))
+}
+
+## save ggplot as canonical-width PNG at 300 dpi at canonical base_size.
+## thematic disabled for the export: its "auto" font resolves from output
+## CSS, which doesn't exist inside downloadHandler (empty-family warnings);
+## explicit white bg since thematic theming doesn't apply here anyway
+save_plot_png <- function(file, plot_fn, height_mm) {
+    thematic::thematic_with_theme(
+        NULL,
+        ggsave(
+            file,
+            plot_fn(),
+            width = plot_width_mm,
+            height = height_mm,
+            units = "mm",
+            dpi = 300,
+            bg = "white"
+        )
     )
 }
 
@@ -99,7 +141,8 @@ add_events <- function(data, times) {
         return(data)
     }
     time_channel <- attr(data, "time_channel")
-    event_channel <- blank_to_null(unname(attr(data, "event_channel"))) %||% "event"
+    event_channel <- blank_to_null(unname(attr(data, "event_channel"))) %||%
+        "event"
     time_vec <- data[[time_channel]]
 
     idx <- vapply(times, \(.t) which.min(abs(time_vec - .t)), integer(1L))
@@ -255,7 +298,10 @@ resolve_boundary_times <- function(data, specs, boundary = c("start", "end")) {
     is_label <- vapply(specs, `[[`, character(1L), "type") == "label"
     redirect <- any(is_label) && !is.null(ev) && !is.character(data[[ev]])
     times <- if (redirect) {
-        c(resolve_one(specs[!is_label]), resolve_one(specs[is_label], "event_labels"))
+        c(
+            resolve_one(specs[!is_label]),
+            resolve_one(specs[is_label], "event_labels")
+        )
     } else {
         resolve_one(specs)
     }
