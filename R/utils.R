@@ -298,6 +298,20 @@ resolve_boundary_times <- function(data, specs, boundary = c("start", "end")) {
     return(sort(times))
 }
 
+## show a page's markdown instructions in a modal
+help_modal <- function(input, id, title, file) {
+    observeEvent(input[[id]], {
+        showModal(modalDialog(
+            title = title,
+            markdown(paste(readLines(file), collapse = "\n")),
+            size = "l",
+            easyClose = TRUE,
+            footer = modalButton("Close")
+        ))
+    })
+    return(invisible(NULL))
+}
+
 ## run expr, converting errors to validate() messages shown in outputs
 try_validate <- function(expr) {
     return(tryCatch(expr, error = \(e) {

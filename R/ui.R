@@ -14,6 +14,24 @@ output_card <- function(title, ...) {
     return(card(fill = FALSE, card_header(title), ...))
 }
 
+## card rendering one page's markdown instructions
+instructions_card <- function(title, file) {
+    return(card(
+        fill = FALSE,
+        card_header(title),
+        markdown(paste(readLines(file), collapse = "\n"))
+    ))
+}
+
+## sidebar help button opening the page's instructions modal
+help_button <- function(id) {
+    return(actionButton(
+        id,
+        tagList(icon("circle-question"), "Instructions"),
+        class = "btn-sm"
+    ))
+}
+
 ## app theme ===================================================
 app_theme <- function() {
     return(
@@ -56,6 +74,7 @@ process_tab <- function() {
         layout_sidebar(
             sidebar = sidebar(
                 open = TRUE,
+                help_button("help_process"),
                 fileInput(
                     "upload_file",
                     label = NULL,
@@ -279,6 +298,7 @@ extract_tab <- function() {
         layout_sidebar(
             sidebar = sidebar(
                 open = TRUE,
+                help_button("help_extract"),
 
                 ## interval boundaries: any combination of methods accepted,
                 ## grouped by method with start & end paired together
@@ -362,6 +382,7 @@ kinetics_tab <- function() {
         layout_sidebar(
             sidebar = sidebar(
                 open = TRUE,
+                help_button("help_kinetics"),
 
                 tags$b("mNIRS Channels"),
                 helpText("Select from multiple"),
@@ -543,13 +564,9 @@ instructions_tab <- function() {
                 )
             ),
 
-            card(
-                fill = FALSE,
-                card_header("Instructions"),
-                markdown(
-                    paste(readLines("instructions.md"), collapse = "\n")
-                )
-            )
+            instructions_card("Process Data", "instructions_process.md"),
+            instructions_card("Extract Intervals", "instructions_extract.md"),
+            instructions_card("Analyse Kinetics", "instructions_kinetics.md")
         )
     ))
 }

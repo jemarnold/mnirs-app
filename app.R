@@ -35,7 +35,7 @@ ui <- page_navbar(
             height = "50px",
             style = "margin-right: 8px; vertical-align: middle;"
         ),
-        "{mnirs} Data Processing"
+        "{mnirs} Data Processing & Analysis"
     ),
     theme = app_theme(),
     header = shinyjs::useShinyjs(),
@@ -61,6 +61,21 @@ server <- function(input, output, session) {
         session,
         interval_list = extracted$interval_list,
         base_data = shared$base_data
+    )
+
+    ## per-page instructions modals
+    help_modal(input, "help_process", "Process Data", "instructions_process.md")
+    help_modal(
+        input,
+        "help_extract",
+        "Extract Intervals",
+        "instructions_extract.md"
+    )
+    help_modal(
+        input,
+        "help_kinetics",
+        "Analyse Kinetics",
+        "instructions_kinetics.md"
     )
 }
 
