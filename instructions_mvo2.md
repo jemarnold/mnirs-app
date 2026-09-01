@@ -1,4 +1,4 @@
-Model muscle oxidative capacity (OxCap) from a repeated arterial occlusion protocol. `mnirs::analyse_kinetics()` is called recursively: an exponential recovery model is fit through the *Peak Slope* results from the *Analyse Kinetics* page, where each occlusion slope is a proxy for muscle oxygen uptake (mV̇O<sub>2</sub>). The rate constant *k* of the recovery curve quantifies oxidative capacity. See the [OxCap analysis article](https://jemarnold.github.io/mnirs/articles/oxcap-analysis.html) for the full method.
+Model muscle oxidative capacity (OxCap) from a repeated arterial occlusion protocol. `mnirs::analyse_kinetics()` is called recursively: an exponential recovery model is fit through the *Peak Slope* results from the *Analyse Kinetics* page, where each occlusion slope is a proxy for muscle oxygen uptake (mVO<sub>2</sub>). The rate constant *k* of the recovery curve quantifies oxidative capacity. See the [OxCap analysis article](https://jemarnold.github.io/mnirs/articles/oxcap-analysis.html) for the full method.
 
 #### Prerequisites:
 1. **Process Data**: import the repeated-occlusion file and apply *Correct Blood Volume* (required for valid slope analysis).
@@ -6,7 +6,7 @@ Model muscle oxidative capacity (OxCap) from a repeated arterial occlusion proto
 3. **Analyse Kinetics**: fit the **Peak Slope** method on the deoxy[haem] channel, e.g. a `3` sec *Window Span* with *Positive* response direction.
 
 #### Recovery Model:
-- **Monoexponential**: nonlinear monoexponential fit through the occlusion slopes over time. Coefficients *A* (peak mV̇O<sub>2</sub>) and *B* (resting asymptote), with time constant *tau* and rate constant *k* `= 1/tau`.
+- **Monoexponential**: nonlinear monoexponential fit through the occlusion slopes over time. Coefficients *A* (peak mVO<sub>2</sub>) and *B* (resting asymptote), with time constant *tau* and rate constant *k* `= 1/tau`.
 - **Exponential Drift**: monoexponential fit plus a linear drift term beginning at *Drift Onset* (a multiple of *tau*, default `3`), e.g. to separate a slow hyperaemic drift from the primary recovery. Experimental method.
 
 #### Fit Time Delay (TD):
@@ -18,14 +18,11 @@ Fit trials separately by listing the slope sample (row) numbers per trial, comma
 #### Zero Trial Start Times:
 Rebase each trial to start from time zero (default on).
 
-#### Rate Constant k in min⁻¹:
-Report *k* in min⁻¹ (`k × 60`), as common in the OxCap literature, in plot labels and as an added coefficients column; otherwise *k* is in the inverse of the time channel units (typically sec⁻¹).
-
 #### Free y-axis Scales:
 Display each trial facet with an independent y-axis range.
 
 #### Show Result Labels:
-Annotate the plot with *tau* and *k* per trial.
+Annotate the plot with *tau* and *k* per trial. *k* is reported in min⁻¹ (`k × 60`), as common in the OxCap literature; the coefficients table gives both *k* (sec⁻¹) and `k_min`.
 
 #### Download Fitted Data:
 Export observed slopes and fitted recovery data as an Excel file, one sheet per trial.

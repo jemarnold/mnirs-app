@@ -107,7 +107,10 @@ kinetics_server <- function(
     ## small static tables: no search/paging controls
     kin_opts <- list(dom = 't', scrollX = TRUE)
     output$kin_coefficients <- renderDT(
-        signif_datatable(kinetics_results()$coefficients, options = kin_opts)
+        signif_datatable(
+            trim_coefs(kinetics_results()$coefficients),
+            options = kin_opts
+        )
     )
     output$kin_diagnostics <- renderDT(
         signif_datatable(kinetics_results()$diagnostics, options = kin_opts)

@@ -542,7 +542,7 @@ kinetics_tab <- function() {
 
 ## mVO2 Recovery Kinetics Tab ======================================
 mvo2_title <- function() {
-    return(tagList("mV̇O", tags$sub("2"), " Recovery Kinetics"))
+    return(tagList("mVO", tags$sub("2"), " Recovery Kinetics"))
 }
 
 mvo2_tab <- function() {
@@ -581,11 +581,11 @@ mvo2_tab <- function() {
                 hr(),
                 tags$b("Group Intervals"),
                 helpText(
-                    "Slope sample numbers per trial; blank = single fit"
+                    "Slope sample numbers per trial; blank = ensemble fit"
                 ),
                 blur_text(
                     "mvo2_groups",
-                    placeholder = "trial1 = 1:16, trial2 = 17:32"
+                    placeholder = "trial1 = 1:10, trial2 = 11:20"
                 ),
                 checkboxInput(
                     "mvo2_zero_time",
@@ -594,11 +594,6 @@ mvo2_tab <- function() {
                 ),
 
                 hr(),
-                checkboxInput(
-                    "mvo2_k_min",
-                    "Rate Constant k in min⁻¹",
-                    value = TRUE
-                ),
                 checkboxInput("mvo2_free_y", "Free y-axis scales"),
                 checkboxInput(
                     "mvo2_labels",

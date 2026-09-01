@@ -10,6 +10,8 @@ mvo2_server <- function(input, output, session, kinetics_results) {
             "Run the Peak Slope method on the Analyse Kinetics page first."
         ))
         method <- req(input$mvo2_method)
+        mvo2_groups <- parse_group_intervals(input$mvo2_groups) %||%
+            "ensemble"
 
         try_validate({
             ## blank groups fit all slope samples as one "ensemble" curve
@@ -21,10 +23,7 @@ mvo2_server <- function(input, output, session, kinetics_results) {
                     method = method,
                     use_TD = isTRUE(input$mvo2_use_TD),
                     zero_time = isTRUE(input$mvo2_zero_time),
-                    group_intervals = parse_group_intervals(
-                        input$mvo2_groups
-                    ) %||%
-                        "ensemble"
+                    group_intervals = mvo2_groups
                 ),
                 if (identical(method, "exponential_drift")) {
                     list(tau_mult = blank_to_null(input$mvo2_tau_mult) %||% 3)
@@ -37,21 +36,32 @@ mvo2_server <- function(input, output, session, kinetics_results) {
     ## Output: recovery fit plot ====================================
     mvo2_dims <- reactive(facet_dims(recovery_results()$data))
 
-    ## per-trial coefficient labels: tau (sec) + k in chosen units
+    ## package annotation rows (colour/corner/stagger) with OxCap tau + k text
     coef_labels <- reactive({
-        coefs <- recovery_results()$coefficients
-        k_scale <- if (isTRUE(input$mvo2_k_min)) 60 else 1
-        k_units <- if (isTRUE(input$mvo2_k_min)) "min⁻¹" else "sec⁻¹"
-        data.frame(
-            interval = coefs$interval,
-            label = sprintf(
-                "%s\ntau = %s sec\nk = %s %s",
-                coefs$interval,
-                signif(coefs$tau, 3),
-                signif(coefs$k * k_scale, 3),
-                k_units
-            )
+        results <- recovery_results()
+        coefs <- results$coefficients
+        ann <- mnirs:::kinetics_annotations(results)[seq_len(nrow(coefs)), ]
+        ann$label <- sprintf(
+            "tau = %s sec\nk = %s min⁻¹",
+            signif(coefs$tau, 3),
+            signif(coefs$k * 60, 3)
         )
+        ## re-stagger: uniform two-line labels replace method default text
+        rank <- stats::ave(ann$vjust, ann$interval, FUN = seq_along)
+        gap <- (2.2 * (rank - 1) + 0.2) / 2
+        ann$vjust <- ifelse(ann$yval_corner < 0, -gap, 1 + gap)
+        return(ann)
+    })
+
+    ## k also in min⁻¹, the OxCap reporting convention, inserted after k
+    mvo2_coefs <- reactive({
+        coefs <- recovery_results()$coefficients
+        coefs$k_min <- coefs$k * 60
+        return(coefs[append(
+            setdiff(names(coefs), "k_min"),
+            "k_min",
+            after = match("k", names(coefs))
+        )])
     })
 
     mvo2_gg <- function(base_size = plot_base_size) {
@@ -65,19 +75,29 @@ mvo2_server <- function(input, output, session, kinetics_results) {
             ## show the two-phase fit components for exponential drift
             components = identical(input$mvo2_method, "exponential_drift")
         ) +
-            theme_mnirs(base_size = base_size, border = "full")
+            theme_mnirs(base_size = base_size, border = "full") +
+            ## fitted y is peak slope, not a raw mNIRS signal
+            labs(
+                x = if (isTRUE(input$time_labels)) "time (mm:ss)" else "time",
+                y = "mNIRS Slope (/sec)"
+            )
         if (isTRUE(input$mvo2_labels)) {
             ## geom_text size is absolute mm, so it must track base_size
             ## (see kin_gg in server_kinetics.R)
             p <- p +
                 geom_text(
                     data = coef_labels(),
-                    aes(label = label),
+                    aes(
+                        y = yval_corner,
+                        label = label,
+                        colour = nirs_channels,
+                        vjust = vjust
+                    ),
                     x = Inf,
-                    y = Inf,
+                    hjust = 1.05,
                     size = 3.5 * base_size / plot_base_size,
-                    hjust = 1.1,
-                    vjust = 1.2
+                    show.legend = FALSE,
+                    inherit.aes = FALSE
                 )
         }
         return(p)
@@ -90,13 +110,9 @@ mvo2_server <- function(input, output, session, kinetics_results) {
 
     ## Output: results tables =======================================
     mvo2_opts <- list(dom = 't', scrollX = TRUE)
-    output$mvo2_coefficients <- renderDT({
-        coefs <- recovery_results()$coefficients
-        if (isTRUE(input$mvo2_k_min) && "k" %in% names(coefs)) {
-            coefs$k_min <- coefs$k * 60
-        }
-        signif_datatable(coefs, options = mvo2_opts)
-    })
+    output$mvo2_coefficients <- renderDT(
+        signif_datatable(trim_coefs(mvo2_coefs()), options = mvo2_opts)
+    )
     output$mvo2_diagnostics <- renderDT(
         signif_datatable(recovery_results()$diagnostics, options = mvo2_opts)
     )
@@ -128,7 +144,7 @@ mvo2_server <- function(input, output, session, kinetics_results) {
         \() {
             results <- recovery_results()
             list(
-                "coefficients" = results$coefficients,
+                "coefficients" = mvo2_coefs(),
                 "diagnostics" = results$diagnostics,
                 "warnings" = results$warnings,
                 "channel arguments" = results$channel_args

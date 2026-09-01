@@ -122,6 +122,17 @@ string_to_numeric <- function(x) {
     return(as.numeric(strsplit(x, split = "\\s*,\\s*")[[1L]]))
 }
 
+## drop display-only clutter per print.mnirs_kinetics: fitted columns,
+## tau_mult, and start_time when zeroed
+trim_coefs <- function(coefs) {
+    drop_cols <- c(
+        if (isTRUE(all(coefs$start_time == 0))) "start_time",
+        "tau_mult",
+        grep("fitted$", names(coefs), value = TRUE)
+    )
+    return(coefs[!names(coefs) %in% drop_cols])
+}
+
 ## DT with numerics formatted client-side: integerish columns as-is,
 ## time column at fixed decimals, remaining numerics to sig figs.
 ## keeps columns numeric so sorting works; no R-side re-formatting
