@@ -156,4 +156,7 @@ kinetics_server <- function(
         \() kin_dims()$height_mm,
         enable_fn = kinetics_results
     )
+
+    ## expose fitted results for the mVO2 Recovery Kinetics page
+    return(list(kinetics_results = kinetics_results))
 }

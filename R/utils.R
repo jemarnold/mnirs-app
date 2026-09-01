@@ -90,6 +90,30 @@ save_plot_png <- function(file, plot_fn, height_mm) {
     )
 }
 
+## parse "trial1 = 1:16, trial2 = 17:32" into a named list of sample
+## (row) indices for analyse_kinetics(group_intervals); blank -> NULL
+## so the argument drops and the default "ensemble" applies
+parse_group_intervals <- function(x) {
+    pairs <- split_named_vec(x %||% "")
+    if (is.null(pairs)) {
+        return(NULL)
+    }
+    vals <- lapply(pairs, \(.v) {
+        if (!grepl("^\\d+(\\s*:\\s*\\d+)?$", .v)) {
+            stop(
+                "Group Intervals must be integers or ranges, ",
+                "e.g. trial1 = 1:16, trial2 = 17:32."
+            )
+        }
+        bounds <- as.integer(strsplit(.v, ":")[[1L]])
+        seq(bounds[1L], bounds[length(bounds)])
+    })
+    ## split_named_vec() names unnamed entries by their own value
+    unnamed <- names(vals) == unlist(pairs)
+    names(vals)[unnamed] <- paste0("trial_", seq_along(vals))[unnamed]
+    return(vals)
+}
+
 ## Parse comma-separated numeric values
 string_to_numeric <- function(x) {
     if (!nchar(x)) {

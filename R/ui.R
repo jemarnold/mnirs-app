@@ -540,6 +540,106 @@ kinetics_tab <- function() {
     ))
 }
 
+## mVO2 Recovery Kinetics Tab ======================================
+mvo2_title <- function() {
+    return(tagList("mV̇O", tags$sub("2"), " Recovery Kinetics"))
+}
+
+mvo2_tab <- function() {
+    return(nav_panel(
+        mvo2_title(),
+        layout_sidebar(
+            sidebar = sidebar(
+                open = TRUE,
+                help_button("help_mvo2"),
+                helpText(paste(
+                    "Fits an exponential recovery model through Peak Slope",
+                    "results from the Analyse Kinetics page"
+                )),
+
+                hr(),
+                radioButtons(
+                    "mvo2_method",
+                    label = "Recovery Model",
+                    choices = c(
+                        "Monoexponential" = "monoexponential",
+                        "Exponential Drift" = "exponential_drift"
+                    )
+                ),
+                checkboxInput("mvo2_use_TD", "Fit Time Delay (TD)"),
+                conditionalPanel(
+                    condition = "input.mvo2_method == 'exponential_drift'",
+                    blur_numeric(
+                        "mvo2_tau_mult",
+                        "Drift Onset (× tau)",
+                        value = 3,
+                        min = 0.1,
+                        step = 0.5
+                    )
+                ),
+
+                hr(),
+                tags$b("Group Intervals"),
+                helpText(
+                    "Slope sample numbers per trial; blank = single fit"
+                ),
+                blur_text(
+                    "mvo2_groups",
+                    placeholder = "trial1 = 1:16, trial2 = 17:32"
+                ),
+                checkboxInput(
+                    "mvo2_zero_time",
+                    "Zero Trial Start Times",
+                    value = TRUE
+                ),
+
+                hr(),
+                checkboxInput(
+                    "mvo2_k_min",
+                    "Rate Constant k in min⁻¹",
+                    value = TRUE
+                ),
+                checkboxInput("mvo2_free_y", "Free y-axis scales"),
+                checkboxInput(
+                    "mvo2_labels",
+                    "Show Result Labels",
+                    value = TRUE
+                ),
+
+                downloadButton(
+                    "mvo2_download_data",
+                    "Download Fitted Data",
+                    class = "btn-primary"
+                ),
+                downloadButton(
+                    "mvo2_download_coefs",
+                    "Download Coefficients",
+                    class = "btn-primary"
+                ),
+                downloadButton(
+                    "mvo2_download_plot",
+                    "Download Plot",
+                    class = "btn-primary"
+                )
+            ),
+
+            output_card(
+                tagList(mvo2_title(), " Fit"),
+                plotOutput("mvo2_plot", height = "auto")
+            ),
+
+            output_card(
+                "Coefficients",
+                DTOutput("mvo2_coefficients", fill = FALSE),
+                card_header("Model Diagnostics"),
+                DTOutput("mvo2_diagnostics", fill = FALSE),
+                ## warnings header + table render only when warnings exist
+                uiOutput("mvo2_warnings_ui")
+            )
+        )
+    ))
+}
+
 ## Instructions Tab ===========================================
 instructions_tab <- function() {
     return(nav_panel(
@@ -566,7 +666,8 @@ instructions_tab <- function() {
 
             instructions_card("Process Data", "instructions_process.md"),
             instructions_card("Extract Intervals", "instructions_extract.md"),
-            instructions_card("Analyse Kinetics", "instructions_kinetics.md")
+            instructions_card("Analyse Kinetics", "instructions_kinetics.md"),
+            instructions_card(mvo2_title(), "instructions_mvo2.md")
         )
     ))
 }

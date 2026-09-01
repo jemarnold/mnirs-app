@@ -24,6 +24,7 @@ options(
 ## R/server_process.R  Process Data tab server
 ## R/server_extract.R  Extract Intervals tab server
 ## R/server_kinetics.R Analyse Kinetics tab server
+## R/server_mvo2.R  mVO2 Recovery Kinetics tab server
 ## R/utils.R        input parsing & data helpers
 ## R/plotly_mnirs.R interactive plot builder
 
@@ -42,6 +43,7 @@ ui <- page_navbar(
     process_tab(),
     extract_tab(),
     kinetics_tab(),
+    mvo2_tab(),
     instructions_tab(),
     !!!socials_nav()
 )
@@ -55,12 +57,18 @@ server <- function(input, output, session) {
         session,
         base_data = shared$base_data
     )
-    kinetics_server(
+    kin <- kinetics_server(
         input,
         output,
         session,
         interval_list = extracted$interval_list,
         base_data = shared$base_data
+    )
+    mvo2_server(
+        input,
+        output,
+        session,
+        kinetics_results = kin$kinetics_results
     )
 
     ## per-page instructions modals
@@ -77,6 +85,7 @@ server <- function(input, output, session) {
         "Analyse Kinetics",
         "instructions_kinetics.md"
     )
+    help_modal(input, "help_mvo2", mvo2_title(), "instructions_mvo2.md")
 }
 
 shinyApp(ui = ui, server = server)
