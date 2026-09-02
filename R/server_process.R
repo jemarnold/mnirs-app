@@ -127,6 +127,15 @@ process_server <- function(input, output, session) {
             names(defaults),
             defaults
         )
+
+        ## default shift timespan to one sample interval
+        if (!is.null(md$sample_rate)) {
+            updateNumericInput(
+                session,
+                "shift_span",
+                value = signif(1 / md$sample_rate, 3)
+            )
+        }
     })
 
     ## on user edits to channel/rate inputs: re-run read_mnirs.
@@ -396,7 +405,26 @@ process_server <- function(input, output, session) {
                 dom = 'frtip',
                 pageLength = 20,
                 scrollX = TRUE,
-                searchHighlight = FALSE
+                searchHighlight = FALSE,
+                ## jump-to-page input appended beside pagination buttons
+                initComplete = JS("
+                    function() {
+                        var api = this.api();
+                        $('<input type=\"number\" min=\"1\" title=\"Go to page\"' +
+                            ' class=\"form-control form-control-sm' +
+                            ' d-inline-block w-auto ms-2\" placeholder=\"Page\">')
+                            .on('change', function() {
+                                var info = api.page.info();
+                                var p = Math.min(
+                                    Math.max(parseInt(this.value, 10), 1),
+                                    info.pages
+                                );
+                                if (p) api.page(p - 1).draw('page');
+                            })
+                            .appendTo($(api.table().container())
+                                .find('.dataTables_paginate'));
+                    }
+                ")
             )
         )
     })

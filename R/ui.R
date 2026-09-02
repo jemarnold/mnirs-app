@@ -157,8 +157,8 @@ process_tab <- function() {
                     choices = c(
                         "None" = "none",
                         "Smooth-Spline" = "smooth_spline",
-                        "Butterworth" = "butterworth",
-                        "Moving-Average" = "moving_average"
+                        "Moving-Average" = "moving_average",
+                        "Butterworth" = "butterworth"
                     )
                 ),
                 conditionalPanel(
