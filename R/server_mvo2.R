@@ -36,21 +36,26 @@ mvo2_server <- function(input, output, session, kinetics_results) {
     ## Output: recovery fit plot ====================================
     mvo2_dims <- reactive(facet_dims(recovery_results()$data))
 
-    ## package annotation rows (colour/corner/stagger) with OxCap tau + k text
+    ## package label rows give colour and corner per channel; their text is
+    ## replaced by two OxCap lines (tau, k) stacked 1.6 text heights apart
     coef_labels <- reactive({
         results <- recovery_results()
         coefs <- results$coefficients
-        ann <- mnirs:::kinetics_annotations(results)[seq_len(nrow(coefs)), ]
-        ann$label <- sprintf(
-            "tau = %s sec\nk = %s min⁻¹",
-            signif(coefs$tau, 3),
-            signif(coefs$k * 60, 3)
+        ann <- mnirs:::kinetics_annotations(results)
+        lab <- ann[nzchar(ann$label), ]
+        lab <- lab[!duplicated(lab[c("interval", "nirs_channels")]), ]
+        i <- match(
+            paste(lab$interval, lab$nirs_channels),
+            paste(coefs$interval, coefs$nirs_channels)
         )
-        ## re-stagger: uniform two-line labels replace method default text
-        rank <- stats::ave(ann$vjust, ann$interval, FUN = seq_along)
-        gap <- (2.2 * (rank - 1) + 0.2) / 2
-        ann$vjust <- ifelse(ann$yval_corner < 0, -gap, 1 + gap)
-        return(ann)
+        lab <- lab[rep(seq_len(nrow(lab)), each = 2L), ]
+        lab$label <- c(rbind(
+            sprintf("tau = %s sec", signif(coefs$tau[i], 3)),
+            sprintf("k = %s min⁻¹", signif(coefs$k[i] * 60, 3))
+        ))
+        idx <- stats::ave(seq_along(lab$label), lab$interval, FUN = seq_along) - 1L
+        lab$vjust <- ifelse(lab$yval < 0, -1.6 * idx, 1 + 1.6 * idx)
+        return(lab)
     })
 
     ## k also in min⁻¹, the OxCap reporting convention, inserted after k
@@ -88,12 +93,12 @@ mvo2_server <- function(input, output, session, kinetics_results) {
                 geom_text(
                     data = coef_labels(),
                     aes(
-                        y = yval_corner,
+                        x = xval,
+                        y = yval,
                         label = label,
                         colour = nirs_channels,
                         vjust = vjust
                     ),
-                    x = Inf,
                     hjust = 1.05,
                     size = 3.5 * base_size / plot_base_size,
                     show.legend = FALSE,
