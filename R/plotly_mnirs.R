@@ -1,3 +1,22 @@
+## seconds -> "YYYY-mm-dd HH:MM:SS[.f]" strings for the plotly date
+## axis. strings are timezone-naive; numeric ms would be read as
+## browser-local time. sprintf() over the split fields is ~10x faster
+## than format.POSIXct(); the date part is formatted once per unique day
+iso_time <- function(t, decimals) {
+    d <- t %/% 86400
+    s <- t - d * 86400
+    days <- unique(d)
+    out <- sprintf(
+        paste0("%s %02d:%02d:%0", 2L + decimals + (decimals > 0L), ".", decimals, "f"),
+        format(.Date(days))[match(d, days)],
+        s %/% 3600,
+        (s %% 3600) %/% 60,
+        s %% 60
+    )
+    out[is.na(t)] <- NA
+    return(out)
+}
+
 ## Dashed vertical line shapes for manual event markers; shared by
 ## the initial plot build and plotlyProxy relayout updates
 event_shapes <- function(manual_events, ink, time_labels = FALSE) {
@@ -5,14 +24,11 @@ event_shapes <- function(manual_events, ink, time_labels = FALSE) {
         return(list())
     }
 
-    ## match the POSIXct x-axis when time is displayed as h:mm:ss.
-    ## pre-format to ISO8601: plotlyProxy sends shapes through Shiny's
-    ## JSON encoder, which truncates POSIXct to whole seconds
+    ## match the date x-axis when time is displayed as h:mm:ss.
+    ## pre-format: plotlyProxy sends shapes through Shiny's JSON
+    ## encoder, which truncates POSIXct to whole seconds
     events <- if (time_labels) {
-        format(
-            .POSIXct(as.numeric(manual_events), tz = "UTC"),
-            "%Y-%m-%dT%H:%M:%OS3"
-        )
+        iso_time(as.numeric(manual_events), 3L)
     } else {
         manual_events
     }
@@ -48,20 +64,21 @@ plotly_mnirs <- function(
     nirs_ch <- sort(attr(data, "nirs_channels"))
     colours <- mnirs::palette_mnirs(length(nirs_ch))
 
-    ## When labelling axis as h:mm:ss, x is ms-since-epoch on a date
-    ## axis so plotly auto-recomputes ticks on zoom; numeric ms avoids
-    ## serialising every sample as a POSIXct string
+    ## decimal places, not sig figs, which collapse adjacent samples to
+    ## the same hover time past ~1000 s; capped at 2 to avoid
+    ## floating-point noise from non-terminating sample intervals
+    ## (e.g. 3 Hz)
+    decimals <- min(mnirs:::count_decimals(data[[time_ch]]), 2L)
+
+    ## When labelling axis as h:mm:ss, x is date-time strings on a date
+    ## axis so plotly auto-recomputes ticks on zoom
     time_vec <- if (time_labels) {
-        as.numeric(data[[time_ch]]) * 1000
+        iso_time(as.numeric(data[[time_ch]]), decimals)
     } else {
         data[[time_ch]]
     }
 
-    ## hover time formatted client-side from x: decimal places, not sig
-    ## figs, which collapse adjacent samples to the same hover time past
-    ## ~1000 s; capped at 2 to avoid floating-point noise from
-    ## non-terminating sample intervals (e.g. 3 Hz)
-    decimals <- min(mnirs:::count_decimals(data[[time_ch]]), 2L)
+    ## hover time formatted client-side from x
     time_fmt <- if (time_labels) {
         paste0("%{x|%-H:%M:%S", if (decimals > 0L) ".%L", "}")
     } else {
@@ -101,7 +118,10 @@ plotly_mnirs <- function(
 
     shapes <- event_shapes(manual_events, ink, time_labels)
 
-    ## shared axis styling; x-axis gets optional h:mm:ss tick text
+    ## shared axis styling; x-axis gets optional h:mm:ss tick text.
+    ## plotly_build() treats character x as categorical and fills
+    ## categoryarray with every unique time string unless already set;
+    ## the placeholder is ignored by plotly.js on a date axis
     axis_style <- list(
         showgrid = FALSE,
         zeroline = FALSE,
@@ -112,7 +132,9 @@ plotly_mnirs <- function(
     xaxis <- c(
         list(title = if (time_labels) paste(time_ch, "(h:mm:ss)") else time_ch),
         axis_style,
-        if (time_labels) list(type = "date", tickformat = "%-H:%M:%S")
+        if (time_labels) {
+            list(type = "date", tickformat = "%-H:%M:%S", categoryarray = I(""))
+        }
     )
 
     plot <- plotly::layout(
