@@ -1,7 +1,7 @@
-## mVO2 Recovery Kinetics tab server logic. recursively fits an
+## oxcap Recovery Kinetics tab server logic. recursively fits an
 ## exponential recovery model through peak-slope results from
 ## kinetics_server(), per the OxCap repeated-occlusion method
-mvo2_server <- function(input, output, session, kinetics_results) {
+oxcap_server <- function(input, output, session, kinetics_results) {
     recovery_results <- reactive({
         ## req outside try_validate so missing upstream results stay silent
         slopes <- req(kinetics_results())
@@ -9,8 +9,8 @@ mvo2_server <- function(input, output, session, kinetics_results) {
             all(c("slope", "peak_slope_time") %in% names(slopes$coefficients)),
             "Run the Peak Slope method on the Analyse Kinetics page first."
         ))
-        method <- req(input$mvo2_method)
-        mvo2_groups <- parse_group_intervals(input$mvo2_groups) %||%
+        method <- req(input$oxcap_method)
+        oxcap_groups <- parse_group_intervals(input$oxcap_groups) %||%
             "ensemble"
 
         try_validate({
@@ -21,12 +21,12 @@ mvo2_server <- function(input, output, session, kinetics_results) {
                     nirs_channels = "slope",
                     time_channel = "peak_slope_time",
                     method = method,
-                    use_TD = isTRUE(input$mvo2_use_TD),
-                    zero_time = isTRUE(input$mvo2_zero_time),
-                    group_intervals = mvo2_groups
+                    use_TD = isTRUE(input$oxcap_use_TD),
+                    zero_time = isTRUE(input$oxcap_zero_time),
+                    group_intervals = oxcap_groups
                 ),
                 if (identical(method, "exponential_drift")) {
-                    list(tau_mult = blank_to_null(input$mvo2_tau_mult) %||% 3)
+                    list(tau_mult = blank_to_null(input$oxcap_tau_mult) %||% 3)
                 }
             )
             do.call(mnirs::analyse_kinetics, args)
@@ -34,7 +34,7 @@ mvo2_server <- function(input, output, session, kinetics_results) {
     })
 
     ## Output: recovery fit plot ====================================
-    mvo2_dims <- reactive(facet_dims(recovery_results()$data))
+    oxcap_dims <- reactive(facet_dims(recovery_results()$data))
 
     ## package label rows give colour and corner per channel; their text is
     ## replaced by two OxCap lines (tau, k) stacked 1.6 text heights apart
@@ -53,13 +53,14 @@ mvo2_server <- function(input, output, session, kinetics_results) {
             sprintf("tau = %s sec", signif(coefs$tau[i], 3)),
             sprintf("k = %s min⁻¹", signif(coefs$k[i] * 60, 3))
         ))
-        idx <- stats::ave(seq_along(lab$label), lab$interval, FUN = seq_along) - 1L
+        idx <- stats::ave(seq_along(lab$label), lab$interval, FUN = seq_along) -
+            1L
         lab$vjust <- ifelse(lab$yval < 0, -1.6 * idx, 1 + 1.6 * idx)
         return(lab)
     })
 
     ## k also in min⁻¹, the OxCap reporting convention, inserted after k
-    mvo2_coefs <- reactive({
+    oxcap_coefs <- reactive({
         coefs <- recovery_results()$coefficients
         coefs$k_min <- coefs$k * 60
         return(coefs[append(
@@ -69,16 +70,16 @@ mvo2_server <- function(input, output, session, kinetics_results) {
         )])
     })
 
-    mvo2_gg <- function(base_size = plot_base_size) {
+    oxcap_gg <- function(base_size = plot_base_size) {
         p <- plot(
             recovery_results(),
             time_labels = isTRUE(input$time_labels),
             points = TRUE,
             labels = FALSE,
-            scales = if (isTRUE(input$mvo2_free_y)) "free" else "free_x",
-            ncol = mvo2_dims()$ncol,
+            scales = if (isTRUE(input$oxcap_free_y)) "free" else "free_x",
+            ncol = oxcap_dims()$ncol,
             ## show the two-phase fit components for exponential drift
-            components = identical(input$mvo2_method, "exponential_drift")
+            components = identical(input$oxcap_method, "exponential_drift")
         ) +
             theme_mnirs(base_size = base_size, border = "full") +
             ## fitted y is peak slope, not a raw mNIRS signal
@@ -86,7 +87,7 @@ mvo2_server <- function(input, output, session, kinetics_results) {
                 x = if (isTRUE(input$time_labels)) "time (mm:ss)" else "time",
                 y = "mNIRS Slope (/sec)"
             )
-        if (isTRUE(input$mvo2_labels)) {
+        if (isTRUE(input$oxcap_labels)) {
             ## geom_text size is absolute mm, so it must track base_size
             ## (see kin_gg in server_kinetics.R)
             p <- p +
@@ -107,62 +108,65 @@ mvo2_server <- function(input, output, session, kinetics_results) {
         }
         return(p)
     }
-    output$mvo2_plot <- render_plot_mm(
-        mvo2_gg,
-        \() mvo2_dims()$height_mm,
-        "mvo2_plot"
+    output$oxcap_plot <- render_plot_mm(
+        oxcap_gg,
+        \() oxcap_dims()$height_mm,
+        "oxcap_plot"
     )
 
     ## Output: results tables =======================================
-    mvo2_opts <- list(dom = 't', scrollX = TRUE)
-    output$mvo2_coefficients <- renderDT(
-        signif_datatable(trim_coefs(mvo2_coefs()), options = mvo2_opts)
+    oxcap_opts <- list(dom = 't', scrollX = TRUE)
+    output$oxcap_coefficients <- renderDT(
+        signif_datatable(trim_coefs(oxcap_coefs()), options = oxcap_opts)
     )
-    output$mvo2_diagnostics <- renderDT(
-        signif_datatable(recovery_results()$diagnostics, options = mvo2_opts)
+    output$oxcap_diagnostics <- renderDT(
+        signif_datatable(recovery_results()$diagnostics, options = oxcap_opts)
     )
 
     ## warnings header + table only when warnings exist
-    output$mvo2_warnings_ui <- renderUI({
+    output$oxcap_warnings_ui <- renderUI({
         req(nrow(recovery_results()$warnings) > 0L)
         tagList(
             card_header("Warnings"),
-            DTOutput("mvo2_warnings", fill = FALSE)
+            DTOutput("oxcap_warnings", fill = FALSE)
         )
     })
-    output$mvo2_warnings <- renderDT(
-        signif_datatable(recovery_results()$warnings, options = mvo2_opts)
+    output$oxcap_warnings <- renderDT(
+        signif_datatable(recovery_results()$warnings, options = oxcap_opts)
     )
 
     ## Download handlers ============================================
     download_xlsx(
         output,
-        "mvo2_download_data",
-        "mnirs_mvo2_recovery_data",
+        "oxcap_download_data",
+        "mnirs_oxcap_recovery_data",
         \() recovery_results()$data,
+        tab = "OxCap Analysis",
         enable_fn = recovery_results
     )
     download_xlsx(
         output,
-        "mvo2_download_coefs",
-        "mnirs_mvo2_recovery_results",
+        "oxcap_download_coefs",
+        "mnirs_oxcap_recovery_results",
         \() {
             results <- recovery_results()
             list(
-                "coefficients" = mvo2_coefs(),
+                "coefficients" = oxcap_coefs(),
                 "diagnostics" = results$diagnostics,
                 "warnings" = results$warnings,
                 "channel arguments" = results$channel_args
             )
         },
+        tab = "OxCap Analysis",
         enable_fn = recovery_results
     )
     download_png(
         output,
-        "mvo2_download_plot",
-        "mvo2_recovery_fit",
-        mvo2_gg,
-        \() mvo2_dims()$height_mm,
-        enable_fn = recovery_results
+        "oxcap_download_plot",
+        "oxcap_recovery_fit",
+        oxcap_gg,
+        \() oxcap_dims()$height_mm,
+        enable_fn = recovery_results,
+        tab = "OxCap Analysis"
     )
 }

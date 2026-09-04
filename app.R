@@ -10,7 +10,7 @@ suppressPackageStartupMessages({
     library(shinyjs)
 })
 
-# pak::pak("jemarnold/mnirs@dev")
+# pak::pak("jemarnold/mnirs@dev", upgrade = TRUE, ask = FALSE)
 
 thematic::thematic_shiny(font = "auto")
 
@@ -24,26 +24,28 @@ options(
 ## R/server_process.R  Process Data tab server
 ## R/server_extract.R  Extract Intervals tab server
 ## R/server_kinetics.R Analyse Kinetics tab server
-## R/server_mvo2.R  mVO2 Recovery Kinetics tab server
+## R/server_oxcap.R  oxcap Recovery Kinetics tab server
 ## R/utils.R        input parsing & data helpers
 ## R/plotly_mnirs.R interactive plot builder
 
 ## UI ===========================================================
 ui <- page_navbar(
+    ## active tab gates the download-toggle observers (see toggle_download)
+    id = "nav",
     title = tagList(
         img(
             src = "mnirs-hex.svg",
             height = "50px",
             style = "margin-right: 8px; vertical-align: middle;"
         ),
-        "{mnirs} Data Processing & Analysis"
+        "{mnirs}"
     ),
     theme = app_theme(),
     header = shinyjs::useShinyjs(),
     process_tab(),
     extract_tab(),
     kinetics_tab(),
-    mvo2_tab(),
+    oxcap_tab(),
     instructions_tab(),
     !!!socials_nav()
 )
@@ -64,7 +66,7 @@ server <- function(input, output, session) {
         interval_list = extracted$interval_list,
         base_data = shared$base_data
     )
-    mvo2_server(
+    oxcap_server(
         input,
         output,
         session,
@@ -85,7 +87,7 @@ server <- function(input, output, session) {
         "Analyse Kinetics",
         "instructions_kinetics.md"
     )
-    help_modal(input, "help_mvo2", mvo2_title(), "instructions_mvo2.md")
+    help_modal(input, "help_oxcap", oxcap_title(), "instructions_oxcap.md")
 }
 
 shinyApp(ui = ui, server = server)

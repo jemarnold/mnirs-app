@@ -22,10 +22,19 @@ split_named_vec <- function(x) {
 ## enable a download button only while its source reactive evaluates
 ## without error; req()/validate() failures grey it out so the
 ## downloadHandler is never hit with an uncatchable condition (HTTP 500).
+## observers never suspend, so the check runs only while the button's
+## tab is active; otherwise it would force the expensive source reactive
+## (e.g. nonlinear fits) on every upstream change from any tab.
 ## toggled after flush because the download output's own render re-enables
 ## the button client-side when its value arrives
-toggle_download <- function(id, source, session = getDefaultReactiveDomain()) {
+toggle_download <- function(
+    id,
+    source,
+    tab,
+    session = getDefaultReactiveDomain()
+) {
     observe({
+        req(session$input$nav == tab)
         ok <- !inherits(tryCatch(source(), error = identity), "error")
         session$onFlushed(\() shinyjs::toggleState(id, condition = ok))
     })
@@ -52,17 +61,21 @@ facet_dims <- function(x) {
 ## pixel width and scales base_size (text) and height so proportions match
 ## the canonical-width export exactly at any window size; the px fallback
 ## (canonical width at 96 dpi) covers the gap before the first client
-## width report
+## width report. width is debounced so a window drag replays the recorded
+## plot per step and re-executes gg_fn() once when it settles
 render_plot_mm <- function(
     gg_fn,
     height_mm,
     id,
     session = getDefaultReactiveDomain()
 ) {
-    w_px <- \() {
-        session$clientData[[paste0("output_", id, "_width")]] %||%
-            (plot_width_mm / 25.4 * 96)
-    }
+    w_px <- debounce(
+        reactive(
+            session$clientData[[paste0("output_", id, "_width")]] %||%
+                (plot_width_mm / 25.4 * 96)
+        ),
+        250
+    )
     return(renderPlot(
         gg_fn(
             base_size = plot_base_size * w_px() * 25.4 / (72 * plot_width_mm)
@@ -355,19 +368,21 @@ try_validate <- function(expr) {
 }
 
 ## downloadHandler + enable-toggle for a dated xlsx export;
-## content_fn returns a data frame or named list of data frames
+## content_fn returns a data frame or named list of data frames;
+## tab is the nav_panel holding the button
 download_xlsx <- function(
     output,
     id,
     prefix,
     content_fn,
+    tab,
     enable_fn = content_fn
 ) {
     output[[id]] <- downloadHandler(
         filename = \() paste0(prefix, "_", Sys.Date(), ".xlsx"),
         content = \(file) writexl::write_xlsx(content_fn(), path = file)
     )
-    toggle_download(id, enable_fn)
+    toggle_download(id, enable_fn, tab)
     return(invisible(NULL))
 }
 
@@ -379,14 +394,15 @@ download_png <- function(
     prefix,
     gg_fn,
     height_mm_fn,
-    enable_fn = NULL
+    enable_fn = NULL,
+    tab = NULL
 ) {
     output[[id]] <- downloadHandler(
         filename = \() paste0(prefix, "_", Sys.Date(), ".png"),
         content = \(file) save_plot_png(file, gg_fn, height_mm_fn())
     )
     if (!is.null(enable_fn)) {
-        toggle_download(id, enable_fn)
+        toggle_download(id, enable_fn, tab)
     }
     return(invisible(NULL))
 }

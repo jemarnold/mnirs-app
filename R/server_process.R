@@ -31,9 +31,10 @@ process_server <- function(input, output, session) {
         ))
     })
 
-    ## scalar bindCache keys: only the resample and filter stages are
-    ## expensive enough to cache; keys hold scalar inputs so caches
-    ## never hash full data frames. datapath is unique per upload, so
+    ## scalar bindCache keys: only the resample, replace and filter
+    ## stages are expensive enough to cache; keys hold scalar inputs so
+    ## caches never hash full data frames. each key layers its stage's
+    ## inputs on the upstream key. datapath is unique per upload, so
     ## re-uploading an edited file with the same name invalidates
     resample_key <- reactive({
         req(raw_data())
@@ -50,15 +51,19 @@ process_server <- function(input, output, session) {
         )
     })
 
-    ## includes the replace-stage inputs because filtered_data()
-    ## consumes the uncached replaced_data()
-    filter_key <- reactive(c(
+    replace_key <- reactive(c(
         resample_key(),
         list(
             input$invalid_values,
             input$replace_outliers,
             input$outlier_span,
-            input$replace_missing,
+            input$replace_missing
+        )
+    ))
+
+    filter_key <- reactive(c(
+        replace_key(),
+        list(
             input$filter_method,
             input$butter_type,
             input$order,
@@ -96,11 +101,12 @@ process_server <- function(input, output, session) {
     }
 
     ## on upload: read, then sync blank inputs to detected metadata.
-    ## suppress_edit armed so edit-observer ignores programmatic updates.
+    ## suppress_edit armed only when an update is actually sent, so the
+    ## edit-observer ignores programmatic updates but is never left
+    ## latched to swallow the next genuine edit.
     observeEvent(input$upload_file, {
         do_read()
         md <- isolate(metadata())
-        suppress_edit(TRUE)
 
         ## detected defaults fill only inputs the user left blank;
         ## updateTextInput() also updates numericInput (same message)
@@ -117,16 +123,22 @@ process_server <- function(input, output, session) {
             ),
             sample_rate = md$sample_rate
         )
-        Map(
+        sent <- Map(
             \(.id, .value) {
                 current <- isolate(input[[.id]])
                 blank <- is.null(current) || isTRUE(is.na(current)) ||
                     !isTRUE(nzchar(current))
-                if (blank) updateTextInput(session, .id, value = .value)
+                ## nothing to send when the detected default is blank
+                ## too: the client drops no-op updates, so the
+                ## edit-observer would never fire to clear the latch
+                send <- blank && !is.null(blank_to_null(.value))
+                if (send) updateTextInput(session, .id, value = .value)
+                return(send)
             },
             names(defaults),
             defaults
         )
+        suppress_edit(any(unlist(sent)))
 
         ## default shift timespan to one sample interval
         if (!is.null(md$sample_rate)) {
@@ -251,7 +263,8 @@ process_server <- function(input, output, session) {
             span = if (replace_outliers) input$outlier_span %||% 15,
             method = if (replace_missing) "linear" else "none"
         )
-    })
+    }) |>
+        bindCache(replace_key())
 
     ## reactive filtered data ======================================
     filtered_data <- reactive({
@@ -407,7 +420,8 @@ process_server <- function(input, output, session) {
                 scrollX = TRUE,
                 searchHighlight = FALSE,
                 ## jump-to-page input appended beside pagination buttons
-                initComplete = JS("
+                initComplete = JS(
+                    "
                     function() {
                         var api = this.api();
                         $('<input type=\"number\" min=\"1\" title=\"Go to page\"' +
@@ -424,7 +438,8 @@ process_server <- function(input, output, session) {
                             .appendTo($(api.table().container())
                                 .find('.dataTables_paginate'));
                     }
-                ")
+                "
+                )
             )
         )
     })
@@ -514,7 +529,13 @@ process_server <- function(input, output, session) {
     )
 
     ## Download handler =============================================
-    download_xlsx(output, "download_data", "mnirs_processed", base_data)
+    download_xlsx(
+        output,
+        "download_data",
+        "mnirs_processed",
+        base_data,
+        tab = "Process Data"
+    )
 
     ## client-side PNG via plotly.js keeps current zoom, colour mode and
     ## raw traces; scale 3 ≈ 300 dpi at on-screen size
@@ -524,7 +545,7 @@ process_server <- function(input, output, session) {
             Sys.Date()
         ))
     })
-    toggle_download("download_plot", rescaled_data)
+    toggle_download("download_plot", rescaled_data, tab = "Process Data")
 
     return(list(base_data = base_data))
 }

@@ -124,7 +124,8 @@ extract_server <- function(input, output, session, base_data) {
         output,
         "download_intervals",
         "mnirs_intervals",
-        interval_list
+        interval_list,
+        tab = "Extract Intervals"
     )
     download_png(
         output,
@@ -150,7 +151,7 @@ extract_server <- function(input, output, session, base_data) {
         shinyjs::click("download_session_plot")
         shinyjs::delay(500, shinyjs::click("download_facet_plot"))
     })
-    toggle_download("download_plots", interval_list)
+    toggle_download("download_plots", interval_list, tab = "Extract Intervals")
 
     ## expose intervals to the kinetics tab
     return(list(interval_list = interval_list))

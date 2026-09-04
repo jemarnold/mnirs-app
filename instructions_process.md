@@ -1,6 +1,6 @@
 mNIRS files can be imported and processed using standardised methods, and displayed in a plot and data table. 
 
-The plot is interactive and can be zoomed in and out (changing settings will reset plot zoom). Processed data can be downloaded for further analysis.
+The plot is interactive and zoomable (changing settings will reset plot zoom). Processed data and plot can be downloaded for further analysis.
 
 #### Upload File:
 Upload an `.xls(x)`, `.csv`, or `.txt` file containing mNIRS data exported from many common wearable devices. Files exported from common NIRS devices should be automatically recognised, with all detected `nirs_channels` returned.

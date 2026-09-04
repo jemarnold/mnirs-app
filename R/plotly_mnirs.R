@@ -48,25 +48,24 @@ plotly_mnirs <- function(
     nirs_ch <- sort(attr(data, "nirs_channels"))
     colours <- mnirs::palette_mnirs(length(nirs_ch))
 
-    ## When labelling axis as h:mm:ss, render x as POSIXct so plotly
-    ## auto-recomputes ticks on zoom
+    ## When labelling axis as h:mm:ss, x is ms-since-epoch on a date
+    ## axis so plotly auto-recomputes ticks on zoom; numeric ms avoids
+    ## serialising every sample as a POSIXct string
     time_vec <- if (time_labels) {
-        .POSIXct(as.numeric(data[[time_ch]]), tz = "UTC")
+        as.numeric(data[[time_ch]]) * 1000
     } else {
         data[[time_ch]]
     }
 
-    time_label <- if (time_labels) {
-        mnirs::format_hmmss(time_vec)
+    ## hover time formatted client-side from x: decimal places, not sig
+    ## figs, which collapse adjacent samples to the same hover time past
+    ## ~1000 s; capped at 2 to avoid floating-point noise from
+    ## non-terminating sample intervals (e.g. 3 Hz)
+    decimals <- min(mnirs:::count_decimals(data[[time_ch]]), 2L)
+    time_fmt <- if (time_labels) {
+        paste0("%{x|%-H:%M:%S", if (decimals > 0L) ".%L", "}")
     } else {
-        ## decimal places, not sig figs: sig figs collapse adjacent
-        ## samples to the same hover time past ~1000 s; capped at 2
-        ## to avoid floating-point noise from non-terminating sample
-        ## intervals (e.g. 3 Hz)
-        mnirs:::signif_trailing(
-            data[[time_ch]],
-            min(mnirs:::count_decimals(data[[time_ch]]), 2L)
-        )
+        sprintf("%%{x:.%df}", decimals)
     }
 
     ## one scattergl line trace per NIRS channel; raw (unfiltered)
@@ -86,9 +85,8 @@ plotly_mnirs <- function(
                 visible = if (raw) show_raw else TRUE,
                 opacity = if (raw) 0.6 else 1,
                 line = list(color = colours[[i]], width = if (raw) 1 else 1.5),
-                text = if (raw) NULL else time_label,
                 hovertemplate = if (raw) NULL else paste0(
-                    time_ch, ": %{text}<br>",
+                    time_ch, ": ", time_fmt, "<br>",
                     "<b>", nirs_ch[[i]], ":</b> %{y:.2f}<extra></extra>"
                 )
             )
@@ -117,7 +115,7 @@ plotly_mnirs <- function(
         if (time_labels) list(type = "date", tickformat = "%-H:%M:%S")
     )
 
-    plotly::layout(
+    plot <- plotly::layout(
         plot,
         paper_bgcolor = paper,
         plot_bgcolor = paper,
@@ -146,4 +144,14 @@ plotly_mnirs <- function(
                 "toggleSpikelines"
             )
         )
+
+    ## plotly_build() recycles scalar hover attributes to one copy per
+    ## sample; collapse them so each trace carries a single string
+    plot <- plotly::plotly_build(plot)
+    plot$x$data <- lapply(plot$x$data, \(.tr) {
+        .tr$hovertemplate <- .tr$hovertemplate[1L]
+        .tr$hoverinfo <- .tr$hoverinfo[1L]
+        return(.tr)
+    })
+    return(plot)
 }

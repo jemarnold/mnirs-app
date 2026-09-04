@@ -11,9 +11,13 @@ kinetics_server <- function(
     ## blur so each click inside the multi-select does not refit
     kin_channels <- reactiveVal()
 
-    ## sync channel choices to processed data; first channel selected
-    observeEvent(base_data(), {
-        chs <- attr(base_data(), "nirs_channels")
+    ## sync channel choices to processed data; first channel selected.
+    ## routed through a reactiveVal, which ignores identical values, so
+    ## data edits that keep the same channels preserve the selection
+    kin_choices <- reactiveVal()
+    observe(kin_choices(attr(base_data(), "nirs_channels")))
+    observeEvent(kin_choices(), {
+        chs <- kin_choices()
         updateSelectizeInput(
             session,
             "kin_nirs_channels",
@@ -67,6 +71,7 @@ kinetics_server <- function(
                 )
             },
             monoexponential = list(use_TD = isTRUE(input$kin_use_TD)),
+            biexponential = list(use_TD = isTRUE(input$kin_use_TD)),
             exponential_drift = list(
                 use_TD = isTRUE(input$kin_use_TD),
                 tau_mult = blank_to_null(input$kin_tau_mult) %||% 3
@@ -134,6 +139,7 @@ kinetics_server <- function(
         "kin_download_data",
         "mnirs_kinetics_data",
         \() kinetics_results()$data,
+        tab = "Analyse Kinetics",
         enable_fn = kinetics_results
     )
     download_xlsx(
@@ -149,6 +155,7 @@ kinetics_server <- function(
                 "channel arguments" = results$channel_args
             )
         },
+        tab = "Analyse Kinetics",
         enable_fn = kinetics_results
     )
     download_png(
@@ -157,9 +164,10 @@ kinetics_server <- function(
         "kinetics_facet",
         kin_gg,
         \() kin_dims()$height_mm,
-        enable_fn = kinetics_results
+        enable_fn = kinetics_results,
+        tab = "Analyse Kinetics"
     )
 
-    ## expose fitted results for the mVO2 Recovery Kinetics page
+    ## expose fitted results for the oxcap Recovery Kinetics page
     return(list(kinetics_results = kinetics_results))
 }
