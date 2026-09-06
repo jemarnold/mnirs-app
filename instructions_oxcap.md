@@ -7,7 +7,7 @@ Model muscle oxidative capacity (OxCap) from a repeated arterial occlusion proto
 
 #### Recovery Model:
 - **Monoexponential**: nonlinear monoexponential fit through the occlusion slopes over time. Coefficients *A* (peak mVO<sub>2</sub>) and *B* (resting asymptote), with time constant *tau* and rate constant *k* `= 1/tau`.
-- **Exponential Drift**: monoexponential fit plus a linear drift term beginning at *Drift Onset* (a multiple of *tau*, default `3`), e.g. to separate a slow hyperaemic drift from the primary recovery. Experimental method.
+- **Exponential Drift**: monoexponential fit plus a linear drift term beginning where the primary recovery reaches the *Drift Onset Fraction* of its amplitude (default `0.95`), e.g. to separate a slow hyperaemic drift from the primary recovery. Experimental method.
 
 #### Fit Time Delay (TD):
 Include a time-delay (*TD*) parameter for a delayed exponential onset. Leave unchecked (default) when recovery is expected to begin immediately after the exercise stimulus.

@@ -26,7 +26,12 @@ oxcap_server <- function(input, output, session, kinetics_results) {
                     group_intervals = oxcap_groups
                 ),
                 if (identical(method, "exponential_drift")) {
-                    list(tau_mult = blank_to_null(input$oxcap_tau_mult) %||% 3)
+                    list(
+                        drift_fraction = blank_to_null(
+                            input$oxcap_drift_frac
+                        ) %||%
+                            0.95
+                    )
                 }
             )
             do.call(mnirs::analyse_kinetics, args)

@@ -45,9 +45,7 @@ kinetics_server <- function(
             method = method,
             start_time = blank_to_null(input$kin_start_time),
             direction = input$kin_direction %||% "auto",
-            end_window = blank_to_null(input$kin_end_window) %||% Inf,
-            partial = FALSE,
-            na.rm = TRUE
+            end_window = blank_to_null(input$kin_end_window) %||% Inf
         )
 
         ## method-specific args; NULL elements drop from the list so
@@ -55,7 +53,7 @@ kinetics_server <- function(
         extra <- switch(
             method,
             response_time = list(
-                fraction = blank_to_null(input$kin_fraction) %||% 0.5
+                response_fraction = blank_to_null(input$kin_fraction) %||% 0.5
             ),
             peak_slope = {
                 width <- blank_to_null(input$kin_width)
@@ -67,16 +65,23 @@ kinetics_server <- function(
                 list(
                     width = width,
                     span = span,
-                    align = input$kin_align %||% "centre"
+                    align = input$kin_align %||% "centre",
+                    na.rm = TRUE
                 )
             },
             monoexponential = list(use_TD = isTRUE(input$kin_use_TD)),
             biexponential = list(use_TD = isTRUE(input$kin_use_TD)),
             exponential_drift = list(
                 use_TD = isTRUE(input$kin_use_TD),
-                tau_mult = blank_to_null(input$kin_tau_mult) %||% 3
+                drift_fraction = blank_to_null(input$kin_drift_fraction) %||%
+                    0.95
             ),
-            sigmoidal = list(shape = input$kin_shape %||% "symmetric")
+            sigmoidal = list(shape = input$kin_shape %||% "symmetric"),
+            sigmoidal_drift = list(
+                shape = input$kin_shape %||% "symmetric",
+                drift_fraction = blank_to_null(input$kin_drift_fraction) %||%
+                    0.95
+            )
         )
 
         try_validate(do.call(mnirs::analyse_kinetics, c(args, extra)))

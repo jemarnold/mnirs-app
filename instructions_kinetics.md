@@ -7,8 +7,9 @@ Select one or more mNIRS channels to analyse. The fit updates when the selection
 - **Response Time**: time taken to reach a specified *Response Fraction* of the response amplitude (default `0.5` = half-time).
 - **Peak Slope**: steepest slope from a rolling linear regression. Specify the rolling window as either *Width* (number of samples) or *Span* (timespan), but not both. Window alignment can be *centred*, *left*, or *right*.
 - **Monoexponential**: nonlinear monoexponential model fit, optionally including a time delay (*TD*) term.
-- **Exponential Drift**: monoexponential model plus a linear drift term, beginning at *Drift Onset* (a multiple of *tau*) after the response onset.
+- **Exponential Drift**: monoexponential model plus a linear drift term, beginning where the primary response reaches the *Drift Onset Fraction* of its amplitude (default `0.95`). Falls back to *Monoexponential* when the data do not support a drift.
 - **Sigmoidal**: sigmoid model fit with *symmetric*, *Gompertz*, or *Gompertz-left* shapes.
+- **Sigmoidal Drift**: sigmoid model plus a linear drift term, beginning where the sigmoid reaches the *Drift Onset Fraction* of its amplitude (default `0.95`). Falls back to *Sigmoidal* when the data do not support a drift.
 
 #### Kinetics Window:
 - **Start Time**: time at which the kinetics response begins (blank = interval start).

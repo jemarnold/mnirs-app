@@ -4,10 +4,15 @@
 ## than format.POSIXct(); the date part is formatted once per unique day
 iso_time <- function(t, decimals) {
     d <- t %/% 86400
-    s <- t - d * 86400
+    s <- t %% 86400
     days <- unique(d)
+    fmt <- sprintf(
+        "%%s %%02d:%%02d:%%0%d.%df",
+        2L + decimals + (decimals > 0L),
+        decimals
+    )
     out <- sprintf(
-        paste0("%s %02d:%02d:%0", 2L + decimals + (decimals > 0L), ".", decimals, "f"),
+        fmt,
         format(.Date(days))[match(d, days)],
         s %/% 3600,
         (s %% 3600) %/% 60,

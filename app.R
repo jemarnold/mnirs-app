@@ -7,6 +7,7 @@ suppressPackageStartupMessages({
     library(mnirs)
     library(thematic)
     library(plotly)
+    library(signal)
     library(shinyjs)
 })
 

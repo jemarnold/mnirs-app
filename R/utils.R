@@ -136,11 +136,13 @@ string_to_numeric <- function(x) {
 }
 
 ## drop display-only clutter per print.mnirs_kinetics: fitted columns,
-## tau_mult, and start_time when zeroed
+## HRT, idx, the constant drift_fraction, and start_time when zeroed
 trim_coefs <- function(coefs) {
     drop_cols <- c(
         if (isTRUE(all(coefs$start_time == 0))) "start_time",
-        "tau_mult",
+        "HRT",
+        "idx",
+        "drift_fraction",
         grep("fitted$", names(coefs), value = TRUE)
     )
     return(coefs[!names(coefs) %in% drop_cols])

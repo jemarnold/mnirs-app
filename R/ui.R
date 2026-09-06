@@ -424,7 +424,8 @@ kinetics_tab <- function() {
                         "Monoexponential" = "monoexponential",
                         "Exponential Drift" = "exponential_drift",
                         "Biexponential" = "biexponential",
-                        "Sigmoidal" = "sigmoidal"
+                        "Sigmoidal" = "sigmoidal",
+                        "Sigmoidal Drift" = "sigmoidal_drift"
                     )
                 ),
 
@@ -475,17 +476,10 @@ kinetics_tab <- function() {
                     )
                 ),
                 conditionalPanel(
-                    condition = "input.kin_method == 'exponential_drift'",
-                    blur_numeric(
-                        "kin_tau_mult",
-                        "Drift Onset (× tau)",
-                        value = 3,
-                        min = 0.1,
-                        step = 0.5
-                    )
-                ),
-                conditionalPanel(
-                    condition = "input.kin_method == 'sigmoidal'",
+                    condition = paste(
+                        "input.kin_method == 'sigmoidal' ||",
+                        "input.kin_method == 'sigmoidal_drift'"
+                    ),
                     selectInput(
                         "kin_shape",
                         label = "Sigmoid Shape",
@@ -494,6 +488,20 @@ kinetics_tab <- function() {
                             "Gompertz" = "gompertz",
                             "Gompertz-Left" = "gompertz_left"
                         )
+                    )
+                ),
+                conditionalPanel(
+                    condition = paste(
+                        "input.kin_method == 'exponential_drift' ||",
+                        "input.kin_method == 'sigmoidal_drift'"
+                    ),
+                    blur_numeric(
+                        "kin_drift_fraction",
+                        "Drift Onset Fraction",
+                        value = 0.95,
+                        min = 0.5,
+                        max = 1,
+                        step = 0.01
                     )
                 ),
 
@@ -583,11 +591,12 @@ oxcap_tab <- function() {
                 conditionalPanel(
                     condition = "input.oxcap_method == 'exponential_drift'",
                     blur_numeric(
-                        "oxcap_tau_mult",
-                        "Drift Onset (× tau)",
-                        value = 3,
-                        min = 0.1,
-                        step = 0.5
+                        "oxcap_drift_frac",
+                        "Drift Onset Fraction",
+                        value = 0.95,
+                        min = 0.5,
+                        max = 1,
+                        step = 0.01
                     )
                 ),
 
