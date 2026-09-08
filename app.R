@@ -7,13 +7,12 @@ suppressPackageStartupMessages({
     library(mnirs)
     library(thematic)
     library(plotly)
-    library(signal)
     library(shinyjs)
 })
 
 # pak::pak("jemarnold/mnirs@dev", upgrade = TRUE, ask = FALSE)
 
-thematic::thematic_shiny(font = "auto")
+thematic::thematic_shiny()
 
 options(
     mnirs.verbose = FALSE,
@@ -21,13 +20,15 @@ options(
 )
 
 ## sourced automatically from R/ directory:
-## R/ui.R           UI tab builders & theme
+## R/ui.R              UI tab builders & theme
 ## R/server_process.R  Process Data tab server
 ## R/server_extract.R  Extract Intervals tab server
 ## R/server_kinetics.R Analyse Kinetics tab server
-## R/server_oxcap.R  oxcap Recovery Kinetics tab server
-## R/utils.R        input parsing & data helpers
-## R/plotly_mnirs.R interactive plot builder
+## R/server_oxcap.R    oxcap Recovery Kinetics tab server
+## R/utils.R           input parsing & data helpers
+## R/plotly_mnirs.R    interactive plot builder
+## _dependencies.R     tell renv to install optional pkgs
+## instructions_*.md   instruction text per page
 
 ## UI ===========================================================
 ui <- page_navbar(

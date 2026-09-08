@@ -85,8 +85,8 @@ render_plot_mm <- function(
 }
 
 ## save ggplot as canonical-width PNG at 300 dpi at canonical base_size.
-## thematic disabled for the export: its "auto" font resolves from output
-## CSS, which doesn't exist inside downloadHandler (empty-family warnings);
+## thematic disabled for the export: its "auto" colours resolve from output
+## CSS, which doesn't exist inside downloadHandler (unresolved-auto warnings);
 ## explicit white bg since thematic theming doesn't apply here anyway
 save_plot_png <- function(file, plot_fn, height_mm) {
     thematic::thematic_with_theme(

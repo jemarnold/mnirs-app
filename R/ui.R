@@ -79,15 +79,10 @@ process_tab <- function() {
                     "upload_file",
                     label = NULL,
                     buttonLabel = "Upload File",
+                    # fmt: skip
                     accept = c(
-                        '.xlsx',
-                        '.xls',
-                        '.csv',
-                        '.CSV',
-                        '.txt',
-                        '.tsv',
-                        '.ftn',
-                        '.ftn2'
+                        '.xlsx', '.xls', '.csv', '.CSV', '.txt', '.tsv', 
+                        '.ftn', '.ftn2'
                     )
                 ),
 
@@ -95,7 +90,7 @@ process_tab <- function() {
                 tags$b("mNIRS Channel Names"),
                 helpText("Multiples comma-separated"),
                 blur_text("nirs_channels"),
-                blur_text("time_channel", "Time/Sample Channel Name"),
+                blur_text("time_channel", "Time Channel Name"),
                 blur_text(
                     "event_channel",
                     "Lap/Event Channel Name\n(optional)"
@@ -209,13 +204,6 @@ process_tab <- function() {
                 ),
 
                 hr(),
-                ## blood-volume correction (dataframe)
-                checkboxInput(
-                    "bv_correct_logical",
-                    "Correct Blood Volume"
-                ),
-                uiOutput("bv_ui"),
-
                 ## shift data (dataframe)
                 checkboxInput("shift_logical", "Shift Data"),
                 conditionalPanel(
@@ -265,6 +253,13 @@ process_tab <- function() {
                     )
                 ),
 
+                ## blood-volume correction (dataframe)
+                checkboxInput(
+                    "bv_correct_logical",
+                    "Correct Blood Volume"
+                ),
+                uiOutput("bv_ui"),
+
                 hr(),
                 ## place manual event lines in data
                 tags$b("Place Event Markers"),
@@ -313,26 +308,27 @@ extract_tab <- function() {
                 ## grouped by method with start & end paired together
                 tags$b("Interval Boundaries (accept multiple)"),
 
-                unname(Map(
-                    \(.id, .label) tagList(
-                        tags$b(.label),
-                        blur_text(
-                            paste0("start_", .id),
-                            "Start",
-                            placeholder = if (.id == "time") "60, 120, ..."
-                        ),
-                        blur_text(paste0("end_", .id), "End"),
-                        if (.id == "label") {
-                            checkboxInput(
-                                "label_fixed",
-                                "Fixed (literal) Label Matching"
-                            )
-                        },
-                        hr()
-                    ),
-                    c("time", "label", "lap", "sample"),
-                    c("By Time", "By Label", "By Lap", "By Sample")
-                )),
+                tags$b("By Time"),
+                blur_text("start_time", "Start", placeholder = "60, 120, ..."),
+                blur_text("end_time", "End"),
+                hr(),
+
+                tags$b("By Label"),
+                blur_text("start_label", "Start", placeholder = "start, ..."),
+                blur_text("end_label", "End"),
+                checkboxInput("label_fixed", "Fixed (literal) string matching"),
+                hr(),
+
+                tags$b("By Lap"),
+                blur_text("start_lap", "Start", placeholder = "1, 2, 3, ..."),
+                blur_text("end_lap", "End"),
+                hr(),
+
+                tags$b("By Sample"),
+                blur_text("start_sample", "Start"),
+                blur_text("end_sample", "End"),
+                hr(),
+
                 ## global signed span offsets applied to all interval
                 ## boundaries: +ve = after, -ve = before. single value
                 ## windows around a lone boundary; blank reads as 0

@@ -70,17 +70,24 @@ kinetics_server <- function(
                 )
             },
             monoexponential = list(use_TD = isTRUE(input$kin_use_TD)),
-            biexponential = list(use_TD = isTRUE(input$kin_use_TD)),
+            ## two-phase methods: never fall back to the simpler model so
+            ## the fit reported always matches the method selected
+            biexponential = list(
+                use_TD = isTRUE(input$kin_use_TD),
+                model_fallback = FALSE
+            ),
             exponential_drift = list(
                 use_TD = isTRUE(input$kin_use_TD),
                 drift_fraction = blank_to_null(input$kin_drift_fraction) %||%
-                    0.95
+                    0.95,
+                model_fallback = FALSE
             ),
             sigmoidal = list(shape = input$kin_shape %||% "symmetric"),
             sigmoidal_drift = list(
                 shape = input$kin_shape %||% "symmetric",
                 drift_fraction = blank_to_null(input$kin_drift_fraction) %||%
-                    0.95
+                    0.95,
+                model_fallback = FALSE
             )
         )
 

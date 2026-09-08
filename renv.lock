@@ -1634,7 +1634,7 @@
     },
     "mnirs": {
       "Package": "mnirs",
-      "Version": "0.7.1.9000",
+      "Version": "0.7.2.9000",
       "Source": "GitHub",
       "Title": "Muscle Near-Infrared Spectroscopy Processing and Analysis",
       "Authors@R": "person(\"Jem\", \"Arnold\", , \"jem.arnold@gmail.com\", role = c(\"aut\", \"cre\", \"cph\"), comment = c(ORCID = \"0000-0003-3908-9447\"))",
@@ -1653,7 +1653,8 @@
         "rlang",
         "stats",
         "tibble",
-        "tidyselect"
+        "tidyselect",
+        "utils"
       ],
       "Suggests": [
         "dplyr",
@@ -1677,7 +1678,7 @@
       "RemoteUsername": "jemarnold",
       "RemotePkgRef": "jemarnold/mnirs@dev",
       "RemoteRef": "dev",
-      "RemoteSha": "80e4d7b21219a780a9fb009408f47561faad9637",
+      "RemoteSha": "da533d97dc5e084620a7a8b7c9447f916b78e933",
       "NeedsCompilation": "no",
       "Author": "Jem Arnold [aut, cre, cph] (ORCID: <https://orcid.org/0000-0003-3908-9447>)",
       "Maintainer": "Jem Arnold <jem.arnold@gmail.com>"
